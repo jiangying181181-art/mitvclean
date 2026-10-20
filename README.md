@@ -226,11 +226,16 @@ mitvclean --host <ip> profiles    # 确认被识别
 
 ```bash
 python tests/test_offline.py        # 离线测试，不连设备
+python tests/test_adb_protocol.py   # 协议测试，用假 adbd 验证协议实现
 python -m mitvclean.cli --help
 ```
 
 测试覆盖：清单解析（注释/BOM/去重）、包名校验（防注入）、状态查询与禁用、还原的对称性、
-dry-run 不动手、域名分类、logcat 提取、画像加载。
+dry-run 不动手、域名分类、logcat 提取、画像加载，以及 ADB 协议实现
+（握手/开流/读写/认证，用本地假 adbd 验证，不需要真电视）。
+
+> 实现 ADB 客户端踩过的坑都记在 [docs/ADB协议实现笔记.md](docs/ADB协议实现笔记.md)，
+> 里面的结论全部来自抓包实测（网上很多说法是错的）。
 
 ---
 
