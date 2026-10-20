@@ -45,6 +45,28 @@ pip install -e .
 不需要 Android SDK，不需要 platform-tools，不需要 adb 二进制。
 （可选：装 `cryptography` 能让 ADB 认证快很多，`pip install -e ".[crypto]"`）
 
+### Windows 用户：双击就行
+
+```
+mitvclean.bat
+```
+
+它会自动找 Python、装依赖、然后进入交互式菜单。不需要敲命令。
+
+### 不想装东西？
+
+直接用 `python -m mitvclean.cli` 也可以，只要 Python 3.9+ 在 PATH 上。
+
+---
+
+## 快速上手（三条命令）
+
+```bash
+mitvclean --host 192.168.1.50 info      # 看看认不认得这台电视
+mitvclean --host 192.168.1.50 doctor    # 体检：有什么能优化的
+mitvclean --host 192.168.1.50 debloat   # 瘦身（可逆）
+```
+
 ---
 
 ## 使用

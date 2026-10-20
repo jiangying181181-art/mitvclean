@@ -27,8 +27,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: 离线测试
+      - name: 离线测试（包管理/清单/域名分类）
         run: python tests/test_offline.py
+
+      - name: 协议测试（ADB 协议实现，用假 adbd 验证）
+        run: python tests/test_adb_protocol.py
 
       - name: CLI 冒烟
         run: |
