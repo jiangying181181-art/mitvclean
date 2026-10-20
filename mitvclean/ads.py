@@ -152,7 +152,7 @@ def pull_apks(
     """
     d = Path(out_dir)
     d.mkdir(parents=True, exist_ok=True)
-    out = dev.shell("pm list packages -f")
+    out = dev.run("pm list packages -f")
     paths: dict[str, str] = {}
     for line in out.splitlines():
         line = line.strip()
@@ -167,7 +167,7 @@ def pull_apks(
         if not src or not src.startswith("/data/app/"):
             continue
         tmp = f"/data/local/tmp/{pkg}.apk"
-        dev.shell(f"cp {src} {tmp}")
+        dev.run(f"cp {src} {tmp}")
         local = d / f"{pkg}.apk"
         try:
             dev.pull(tmp, str(local))
@@ -175,7 +175,7 @@ def pull_apks(
         except Exception as e:
             print(f"  ! 拉取 {pkg} 失败：{e}")
         finally:
-            dev.shell(f"rm -f {tmp}")
+            dev.run(f"rm -f {tmp}")
     return pulled
 
 
@@ -183,7 +183,7 @@ def grab_logcat(dev: AdbDevice, out_file: str | Path) -> Path:
     """把设备当前的 logcat 拉到本地。"""
     p = Path(out_file)
     p.parent.mkdir(parents=True, exist_ok=True)
-    text = dev.shell("logcat -d -v time", read_timeout=120)
+    text = dev.run("logcat -d -v time", read_timeout=120)
     p.write_text(text, encoding="utf-8", errors="replace")
     return p
 
@@ -197,7 +197,7 @@ def find_ad_settings(dev: AdbDevice) -> dict[str, str]:
     keywords = ("ad", "splash", "boot", "front", "skip", "vip")
     for ns in ("global", "system", "secure"):
         try:
-            listing = dev.shell(f"settings list {ns}")
+            listing = dev.run(f"settings list {ns}")
         except Exception:
             continue
         for line in listing.splitlines():
@@ -220,8 +220,8 @@ def set_ad_settings(dev: AdbDevice, values: dict[str, str]) -> dict[str, str]:
     for full, val in values.items():
         ns, _, key = full.partition(".")
         try:
-            res = dev.shell(f"settings put {ns} {key} {val}").strip()
-            check = dev.shell(f"settings get {ns} {key}").strip()
+            res = dev.run(f"settings put {ns} {key} {val}").strip()
+            check = dev.run(f"settings get {ns} {key}").strip()
             out[full] = check if check else res
         except Exception as e:
             out[full] = f"ERROR: {e}"
@@ -251,16 +251,16 @@ def clean_ad_cache(
     out: dict[str, str] = {}
     for p in packages:
         try:
-            out[f"pm clear {p}"] = dev.shell(f"pm clear {p}").strip()
+            out[f"pm clear {p}"] = dev.run(f"pm clear {p}").strip()
         except Exception as e:
             out[f"pm clear {p}"] = f"ERROR: {e}"
     for d in sdcard_cache_dirs or []:
         try:
-            listing = dev.shell(f"ls {d}")
+            listing = dev.run(f"ls {d}")
             if "No such file" in listing or not listing.strip():
                 continue
             n = len([x for x in listing.splitlines() if x.strip()])
-            dev.shell(f"rm -rf {d}/*")
+            dev.run(f"rm -rf {d}/*")
             out[d] = f"已清空（原 {n} 项）"
         except Exception as e:
             out[d] = f"ERROR: {e}"

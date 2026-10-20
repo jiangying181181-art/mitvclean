@@ -60,8 +60,8 @@ def _connect(args) -> AdbDevice:
 
 def _auto_profile(dev: AdbDevice) -> str | None:
     """按设备代号自动匹配机型画像。"""
-    device = dev.shell("getprop ro.product.device").strip()
-    model = dev.shell("getprop ro.product.model").strip()
+    device = dev.run("getprop ro.product.device").strip()
+    model = dev.run("getprop ro.product.model").strip()
     for slug in list_profiles():
         p = load_profile(slug)
         meta = p.meta
@@ -95,15 +95,15 @@ def cmd_info(args) -> int:
             "ro.build.version.release", "ro.build.version.sdk",
             "ro.build.display.id", "ro.board.platform",
         ):
-            props[p] = dev.shell(f"getprop {p}").strip()
+            props[p] = dev.run(f"getprop {p}").strip()
         mem = {}
-        for line in dev.shell("cat /proc/meminfo").splitlines():
+        for line in dev.run("cat /proc/meminfo").splitlines():
             for k in ("MemTotal", "MemFree", "MemAvailable"):
                 if line.startswith(k):
                     mem[k] = line.split(":")[0].strip() + " " + line.split(":")[1].strip()
         installed = packages.list_packages(dev)
         disabled = packages.list_packages(dev, disabled_only=True)
-        home = dev.shell(
+        home = dev.run(
             "cmd package resolve-activity --brief -a android.intent.action.MAIN "
             "-c android.intent.category.HOME"
         ).strip().splitlines()
@@ -131,8 +131,8 @@ def cmd_info(args) -> int:
 def cmd_doctor(args) -> int:
     """体检：一次报告现状 + 可优化点。"""
     with _connect(args) as dev:
-        model = dev.shell("getprop ro.product.model").strip()
-        release = dev.shell("getprop ro.build.version.release").strip()
+        model = dev.run("getprop ro.product.model").strip()
+        release = dev.run("getprop ro.build.version.release").strip()
         print("=" * 60)
         print(f"  {model} · Android {release}")
         print("=" * 60)
@@ -166,7 +166,7 @@ def cmd_doctor(args) -> int:
             "/sdcard/Android/data/com.mitv.tvhome/cache/video-cache",
         ):
             try:
-                listing = dev.shell(f"ls {d}")
+                listing = dev.run(f"ls {d}")
                 if listing.strip() and "No such file" not in listing:
                     n = len([x for x in listing.splitlines() if x.strip()])
                     print(f"    {d}  ({n} 项)")
@@ -185,8 +185,8 @@ def cmd_scan(args) -> int:
     report = ads.DomainReport()
 
     with _connect(args) as dev:
-        model = dev.shell("getprop ro.product.model").strip()
-        device = dev.shell("getprop ro.product.device").strip()
+        model = dev.run("getprop ro.product.model").strip()
+        device = dev.run("getprop ro.product.device").strip()
         print(f"设备：{model} / {device}")
 
         # 1) 动态：logcat（服务端下发的域名只有这里有）

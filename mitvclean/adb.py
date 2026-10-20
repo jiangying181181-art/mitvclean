@@ -59,6 +59,10 @@ A_WRTE = 0x45545257  # "WRTE"
 A_AUTH = 0x48545541  # "AUTH"
 
 # CNXN 参数
+# 版本号与 maxdata 按官方 adb 的实际取值（抓包自 adbd 确认）：
+#   arg0 = 0x01000001   协议版本
+#   arg1 = 0x00100000   最大负载 1MB
+# 设备回 CNXN 时会带上自己的版本与 maxdata，取两者较小值。
 CNXN_VERSION = 0x01000001
 CNXN_MAXDATA = 1024 * 1024
 
@@ -96,33 +100,52 @@ def _load_private_key() -> bytes:
 
 
 def _rsa_sign(data: bytes) -> bytes:
-    """用 RSA-SHA1 签 ADB 认证 challenge。"""
+    """用 RSA 私钥对 ADB 认证 token 做签名。
+
+    ⚠️ 这里的填充格式**不是**标准 PKCS#1 v1.5，也不套 SHA-1 摘要。
+    抓包自真机 adbd 确认，AOSP 客户端签出来的明文块是：
+
+        00 01 FF FF ... FF 00 || 3021300906052b0e03021a05000414 || <token>
+
+    即：PKCS#1 type 1 填充 + **SHA-1 DigestInfo 前缀（15 字节）** + **原始 token**
+    （注意末尾放的是 token 本身，不是 token 的 SHA-1 摘要）。
+
+    adbd 侧用公钥做 RSA_public_decrypt 后，会剥掉填充与 DigestInfo，
+    直接把剩下的部分与 token 逐字节比较。格式差一点就是 AUTH 无限循环。
+
+    填 0xFF 的个数：k - 3 - len(DigestInfo) - len(token)
+    """
+    n, d, _e = _load_key_numbers()
+    k = (n.bit_length() + 7) // 8
+    # SHA-1 的 DigestInfo（不含摘要本身），AOSP 用 md_null 模式时保留这段前缀
+    digest_info = bytes.fromhex("3021300906052b0e03021a05000414")
+    pad_len = k - 3 - len(digest_info) - len(data)
+    if pad_len < 8:
+        raise AdbError("token 太长，无法用 RSA 填充签名")
+    em = b"\x00\x01" + b"\xff" * pad_len + b"\x00" + digest_info + data
+    return pow(int.from_bytes(em, "big"), d, n).to_bytes(k, "big")
+
+
+def _load_key_numbers() -> tuple[int, int, int]:
+    """取私钥的 (n, d, e)。有 cryptography 用它，没有则自己解析 PEM。"""
     try:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives import serialization
 
         keyfile, _ = _key_paths()
         priv = serialization.load_pem_private_key(keyfile.read_bytes(), password=None)
-        return priv.sign(data, padding.PKCS1v15(), hashes.SHA1())
+        nums = priv.private_numbers()
+        pub = priv.public_key().public_numbers()
+        return pub.n, nums.d, pub.e
     except ImportError:
-        return _rsa_sign_pure(data)
-    except FileNotFoundError:
-        raise AdbError("没有 adb 私钥，无法完成认证") from None
+        keyfile, _ = _key_paths()
+        if not keyfile.exists():
+            raise AdbError("没有 adb 私钥，无法完成认证") from None
+        return _parse_pem_rsa(keyfile.read_text(encoding="utf-8", errors="replace"))
 
 
 def _rsa_sign_pure(data: bytes) -> bytes:
-    """纯 Python 的 RSA PKCS#1 v1.5 签名（没有 cryptography 时的兜底）。"""
-    keyfile, _ = _key_paths()
-    if not keyfile.exists():
-        raise AdbError("没有 adb 私钥，无法完成认证")
-    n, d, _e = _parse_pem_rsa(keyfile.read_text(encoding="utf-8", errors="replace"))
-    k = (n.bit_length() + 7) // 8
-    prefix = bytes.fromhex("3021300906052b0e03021a05000414")  # SHA-1 DigestInfo
-    t = prefix + hashlib.sha1(data).digest()
-    ps = b"\xff" * (k - len(t) - 3)
-    em = b"\x00\x01" + ps + b"\x00" + t
-    s = pow(int.from_bytes(em, "big"), d, n)
-    return s.to_bytes(k, "big")
+    """兼容旧调用：等价于 _rsa_sign。"""
+    return _rsa_sign(data)
 
 
 def _parse_pem_rsa(text: str):
@@ -215,13 +238,24 @@ class AdbDevice:
         return self._local_id
 
     # ---------- 连接 ----------
-    def connect(self) -> None:
+    def connect(self) -> "AdbDevice":
+        """建立连接并完成握手，返回自身（支持链式调用）。"""
         self.sock = socket.create_connection((self.host, self.port), timeout=self.timeout)
         self.sock.settimeout(self.timeout)
         self._handshake()
+        return self
 
     def _handshake(self) -> None:
-        banner = b"host::features=shell_v2,cmd,stat_v2,ls_v2,fixed_push_mkdir\x00"
+        # banner 格式：host::<serial>:<features>\0
+        # 这里用与官方 adb 完全一致的 feature 列表（抓包自 adbd 确认）。
+        # adbd 会按 feature 决定用哪种流协议，声明不全会导致后续服务不可用。
+        banner = (
+            b"host::features=shell_v2,cmd,stat_v2,ls_v2,fixed_push_mkdir,apex,abb,"
+            b"fixed_push_symlink_timestamp,abb_exec,remount_shell,track_app,"
+            b"sendrecv_v2,sendrecv_v2_brotli,sendrecv_v2_lz4,sendrecv_v2_zstd,"
+            b"sendrecv_v2_dry_run_send,devicetracker_proto_format,devraw,"
+            b"app_info,server_status,track_mdns\x00"
+        )
         self._send_msg(A_CNXN, CNXN_VERSION, CNXN_MAXDATA, banner)
 
         # 设备回 AUTH（要认证）或 CNXN（已信任，直接成功）
@@ -282,6 +316,8 @@ class AdbDevice:
         self._local_id = self._next_local_id()
         self._send_msg(A_OPEN, self._local_id, 0, service.encode("utf-8") + b"\x00")
         # 设备回 OKAY（成功）或 CLSE（拒绝）
+        # OKAY 的两个参数：arg0 = 设备的 local id（remote id），
+        #                  arg1 = 我们的 local id（回显）
         while True:
             cmd, arg0, arg1, _ = self._recv_msg()
             if cmd == A_OKAY:
@@ -327,15 +363,97 @@ class AdbDevice:
     def shell(self, command: str, read_timeout: float = 60.0) -> str:
         """执行一条 shell 命令并返回完整输出（文本）。
 
+        用 shell v2 协议（官方 adb 也是这么发的，抓包确认）：
+            服务名 = "shell,v2,TERM=dumb,raw:<命令>"
+
+        v2 的 stdout 帧格式（每帧）：
+            1 字节 0x01 = stdout
+            4 字节**小端**长度
+            N 字节 数据
+
+        收到 0x03 = stderr，0x04 = exit code。
+        帧结束以 0x02 (stdin EOF) 或流关闭为准。
+
+        ⚠️ 每条命令用**独立连接**。实测在同一连接上连续开流会失败：
+        设备还没处理完上一个流的 CLSE，第二个 OPEN 就被 CLSE 掉。
+        官方 adb 也是每个命令一条连接。
+
         注意：一次只发一条命令。部分国产 ROM 的 shell 收到分号链式命令时
         会静默中断后续语句，所以本项目坚持逐条下发。
         """
         assert self.sock is not None
         self.sock.settimeout(read_timeout)
-        local = self._open_stream("shell:" + command)
-        data = self._read_stream(local)
+        service = f"shell,v2,TERM=dumb,raw:{command}"
+        local = self._open_stream(service)
+        data = self._read_shell_v2(local)
         self._send_msg(A_CLSE, local, self._remote_id)
         return data.decode("utf-8", errors="replace")
+
+    def run(self, command: str, read_timeout: float = 60.0) -> str:
+        """执行一条命令，失败时自动用新连接重试一次。
+
+        小米等国产 ROM 的 adbd 在同一连接上连续开流不稳定（第二条命令常被 CLSE），
+        这里做一次"换连接重试"的兜底。
+        """
+        try:
+            return self.shell(command, read_timeout)
+        except AdbError:
+            # 换一条连接重试
+            self.close()
+            self.connect()
+            return self.shell(command, read_timeout)
+
+    def _read_shell_v2(self, local_id: int) -> bytes:
+        """按 shell v2 的帧格式读取输出。
+
+        帧类型：
+            0x01 = stdout    0x02 = stdin EOF
+            0x03 = stderr    0x04 = exit code
+        只取 stdout，stderr 单独收集（不进结果）。
+        """
+        assert self.sock is not None
+        out = bytearray()
+        self.last_stderr = bytearray()
+        while True:
+            cmd, arg0, arg1, payload = self._recv_msg()
+            if cmd == A_WRTE:
+                out += self._parse_shell_v2_chunk(payload, self.last_stderr)
+                self._send_msg(A_OKAY, local_id, self._remote_id)
+                continue
+            if cmd == A_OKAY:
+                continue
+            if cmd == A_CLSE:
+                break
+            if cmd == A_AUTH:
+                self._handle_auth(arg0, b"")
+                continue
+        return bytes(out)
+
+    @staticmethod
+    def _parse_shell_v2_chunk(payload: bytes, err: bytearray) -> bytes:
+        """解析 shell v2 的一个 WRTE 块，返回其中的 stdout 部分。
+
+        帧格式：1 字节类型 + 4 字节**小端**长度 + 数据。
+            0x01 = stdout    0x02 = stdin EOF
+            0x03 = stderr    0x04 = exit code
+
+        ⚠️ 长度是**小端**（抓包实测：\\x01\\x05\\x00\\x00\\x00 表示 5 字节），
+        按大端读会得到 83886080 这种荒谬的值。
+        """
+        result = bytearray()
+        i = 0
+        while i + 5 <= len(payload):
+            kind = payload[i]
+            length = struct.unpack("<I", payload[i + 1:i + 5])[0]
+            i += 5
+            data = payload[i:i + length]
+            i += length
+            if kind == 0x01:      # stdout
+                result += data
+            elif kind == 0x03:    # stderr
+                err += data
+            # 0x02 (stdin EOF) / 0x04 (exit code) 忽略
+        return bytes(result)
 
     def pull(self, remote: str, local: str) -> None:
         """把设备上的文件拉到本地。

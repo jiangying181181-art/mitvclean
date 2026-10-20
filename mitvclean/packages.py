@@ -68,7 +68,7 @@ def validate_package(name: str) -> str:
 def list_packages(dev: AdbDevice, disabled_only: bool = False) -> set[str]:
     """列出设备上的包。"""
     cmd = "pm list packages -d" if disabled_only else "pm list packages"
-    out = dev.shell(cmd)
+    out = dev.run(cmd)
     result = set()
     for line in out.splitlines():
         line = line.strip()
@@ -186,7 +186,7 @@ def disable_packages(
 
     for n in targets:
         try:
-            out = dev.shell(f"pm disable-user --user 0 {n}").strip()
+            out = dev.run(f"pm disable-user --user 0 {n}").strip()
         except Exception as e:
             result.failed.append((n, str(e)))
             continue
@@ -218,7 +218,7 @@ def enable_packages(
     failed: list[tuple[str, str]] = []
     for n in to_enable:
         try:
-            out = dev.shell(f"pm enable {n}").strip()
+            out = dev.run(f"pm enable {n}").strip()
         except Exception as e:
             failed.append((n, str(e)))
             continue
@@ -234,7 +234,7 @@ def clear_cache(dev: AdbDevice, packages: list[str]) -> dict[str, str]:
     out: dict[str, str] = {}
     for p in packages:
         try:
-            out[p] = dev.shell(f"pm clear {p}").strip()
+            out[p] = dev.run(f"pm clear {p}").strip()
         except Exception as e:
             out[p] = f"ERROR: {e}"
     return out

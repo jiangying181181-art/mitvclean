@@ -48,6 +48,10 @@ class FakeDevice:
             return ""
         return ""
 
+    def run(self, cmd, read_timeout=60.0):
+        """真实设备上带重试的入口；桩件不需要重试。"""
+        return self.shell(cmd, read_timeout)
+
     def close(self):
         pass
 

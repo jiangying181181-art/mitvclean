@@ -80,7 +80,7 @@ class FakeAdbd:
                 self.services.append(service)
                 # 先回主协议 OKAY，表示流建立成功
                 self._send(conn, A_OKAY, arg0, 7, b"")
-                if service.startswith("shell:"):
+                if service.startswith("shell,") or service.startswith("shell:"):
                     self._serve_shell(conn, arg0)
                 elif service == "sync:":
                     self._serve_pull(conn, arg0)
@@ -89,8 +89,13 @@ class FakeAdbd:
                 continue
 
     def _serve_shell(self, conn, local_id):
-        """shell 服务：adb 主协议分帧，WRTE 送数据，CLOSE 表示结束。"""
-        self._send(conn, A_WRTE, local_id, 7, self.output)
+        """shell 服务：adb 主协议分帧 + shell v2 的 stdout 帧。
+
+        shell v2 的 stdout 帧：1 字节类型(0x01) + 4 字节**小端**长度 + 数据。
+        """
+        payload = self.output
+        frame = b"\x01" + struct.pack("<I", len(payload)) + payload
+        self._send(conn, A_WRTE, local_id, 7, frame)
         self._send(conn, A_CLSE, local_id, 7, b"")
 
     def _serve_pull(self, conn, local_id):
@@ -177,7 +182,8 @@ def test_shell_roundtrip():
 
     assert out.strip() == "MiTV-ANSP0", repr(out)
     assert srv.services, "服务端没收到 OPEN"
-    assert srv.services[0] == "shell:getprop ro.product.model", srv.services
+    assert srv.services[0].startswith("shell,v2,TERM=dumb,raw:"), srv.services
+    assert srv.services[0].endswith("getprop ro.product.model"), srv.services
 
 
 def test_pull_roundtrip():
