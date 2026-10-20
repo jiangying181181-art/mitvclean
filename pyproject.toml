@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mitvclean"
+version = "0.1.0"
+description = "小米电视去臃肿与去广告工具：可逆禁用后台包 + 从真机提取广告域名"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["xiaomi", "mitv", "adb", "debloat", "ads", "android-tv"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# 只有在 adb 认证需要自己签 RSA 密钥时才有必要装；有 cryptography 会快很多。
+crypto = ["cryptography>=3.4"]
+
+[project.scripts]
+mitvclean = "mitvclean.cli:main"
+
+[tool.setuptools]
+packages = ["mitvclean"]
+
+[tool.setuptools.package-data]
+mitvclean = ["py.typed"]

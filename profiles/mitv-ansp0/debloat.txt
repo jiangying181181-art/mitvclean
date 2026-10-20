@@ -1,0 +1,50 @@
+# mitvclean · MiTV-ANSP0 去臃肿包清单
+#
+# 语义：这里的每一项都会被 pm disable-user 禁用（不是卸载，随时可还原）。
+# 动手前工具会先落盘记录每个包的原始状态，还原时只恢复原本开着的。
+#
+# ⚠️ 本机实测结论（重要）：
+#   · com.mitv.tvhome（小米桌面）不能禁 —— 禁了电视进不去桌面
+#   · com.xiaomi.mitv.settings / mitv.service / com.xiaomi.mitv.tvplayer 不能禁
+#   · com.droidlogic.*（Amlogic 平台输入/图像/字幕服务）不能禁
+#   · 投屏全家桶（smartshare / miplay / wfdsinkhelperservice / mi_connect_service / upnp）建议保留
+#
+# ===== 默认禁用 =====
+com.miui.tv.analytics
+com.xiaomi.statistic
+com.miui.analytics
+com.mitv.cloudcontrol
+com.xiaomi.mitv.tvpush.tvpushservice
+com.android.smspush
+com.xm.webcontent
+com.mitv.shoplugin
+com.duokan.videodaily
+com.xiaomi.mitv.tvmanager
+com.xiaomi.mitv.handbook
+com.xiaomi.mitv.smartpanel
+com.xiaomi.screenrecorder
+com.xiaomi.gamecenter.sdk.service.mibox
+com.xiaomi.mimusic2
+com.xiaomi.tv.gallery
+com.mitv.gallery
+com.xiaomi.mitv.karaoke.service
+com.mipay.wallet.tv
+com.xiaomi.mitv.pay
+com.xiaomi.mitv.payment
+com.xiaomi.mitv.shop
+com.xiaomi.mitv.legal.webview
+com.cmgame.gamehalltv
+cn.egame.terminal.cloudtv
+com.xiaomi.eetv.litehome
+com.sohuott.tv.vod.xiaomi
+org.courville.nova
+
+# ===== 默认保留（按使用者需求决定，移到上面即可禁用）=====
+# com.mitv.kidai    # 少儿频道 —— 孩子看动画片要用
+# com.hongen.app.word.ott.vip    # 洪恩识字 —— 儿童教育内容
+# com.ihuman.pinyin.ott.vip    # 伴鱼拼音 —— 儿童教育内容
+# com.lutongnet.nldmxXiaomiChildren    # 儿童内容 —— 孩子看动画片要用
+# com.duokan.airkan.tvbox    # 爱看投屏 —— 投屏功能的一部分
+
+# ===== 本机确认不需要，可选禁用 =====
+# com.xiaomi.voicecontrol    # 小爱语音 —— 用户明确表示不需要

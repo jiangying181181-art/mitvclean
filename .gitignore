@@ -1,0 +1,24 @@
+# 运行时产物
+work/
+*.log
+logcat*.txt
+apk/
+*.apk
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 状态记录（里面含有你自己的设备信息，不要提交）
+state-*.json

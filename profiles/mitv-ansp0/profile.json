@@ -1,0 +1,20 @@
+{
+  "title": "小米全面屏电视 Pro E65S",
+  "model": "L65M5-ES",
+  "device": "MiTV-ANSP0",
+  "codename": "jobs",
+  "android": "Android 9 (SDK 28)",
+  "firmware": "22.12.6.2963",
+  "platform": "Amlogic T972",
+  "ram": "2GB",
+  "verified": true,
+  "verified_on": "2026-10-20",
+  "notes": [
+    "这台电视的 com.mitv.tvhome 装在 /data/app/ 而非 /system/ —— 被第三方精简版刷过，广告组件都在这个包里",
+    "该固件禁止组件级禁用（pm disable 报 SecurityException: Shell cannot change component state），禁整包又会连桌面一起干掉，所以广告只能走 DNS 拦截",
+    "属性 persist.bootvideo.bootanim 在本机不存在；service.bootvideo 是只读的，setprop 会失败",
+    "国行固件的网络 ADB（5555）每次重启后自动关闭，需要在 设置 -> 账号与安全 -> ADB 调试 重新打开",
+    "sdcard 上的 app 目录 shell 可读可写（/sdcard/Android/data/com.mitv.tvhome/cache/），广告缓存可以从这里清",
+    "app 私有目录（/data/data/com.mitv.tvhome/shared_prefs）shell 读不到，APK 里的广告开关（AD_SWITCH_CONFIG 等）改不了"
+  ]
+}

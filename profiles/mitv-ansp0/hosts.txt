@@ -1,0 +1,90 @@
+# mitvclean · MiTV-ANSP0 广告拦截域名
+#
+# 格式：一行一个域名（不带 IP，工具会补成 127.0.0.1 <域名>）
+# 用法：路由器 -> 自定义 Hosts（小米路由器在米家 App 的工具箱里）
+#      注意小米路由器的格式是 IP 在前
+#
+# 数据来源：静态 APK 提取 + logcat 运行时实测 两条腿交叉，
+#          实测机型 MiTV-ANSP0 / Android 9 / 固件 22.12.6.2963
+#
+# ⚠️ 副作用：第 2 组是内容源域名，拦掉后该内容源会打不开。
+#    哪个 App 打不开，删掉对应那行即可。
+
+# ===== 第 1 组：小米广告配置与交易平台（安全，优先）=====
+ad.xiaomi.com
+ad1.xiaomi.com
+ad.mi.com
+api.ad.xiaomi.com
+new.api.ad.xiaomi.com
+cdn.ad.xiaomi.com
+e.ad.xiaomi.com
+ssp.ad.xiaomi.com
+monitor-check.ad.xiaomi.com
+sdkconfig.ad.india.xiaomi.com
+sdkconfig.ad.intl.xiaomi.com
+sdkconfig.ad.rus.xiaomi.com
+sdkconfig.ad.xiaomi.com
+staging-monitor-check.ad.xiaomi.com
+test.ad.xiaomi.com
+track.ad.xiaomi.com
+t7z.cupid.ptqy.gitv.tv
+api.cupid.ptqy.gitv.tv
+gvod.aiseejapp.atianqi.com
+mobaliyun.res.mgtv.com
+pl.cp31.ott.cibntv.net
+vali-ugc.cp31.ott.cibntv.net
+ad.hpplay.cn
+adeng.hpplay.cn
+adx.v.mitvos.com
+preview-adx.v.mitvos.com
+staging-adx.v.mitvos.com
+sdkconfig.xiaomi.com
+t.track.ad.xiaomi.com
+cp-ppvideo.cdn.ptmi.gitv.tv
+cp-senyu.cdn.ptmi.gitv.tv
+cp-yishijie.cdn.ptmi.gitv.tv
+cp-yundou.cdn.ptmi.gitv.tv
+filmtv.cdn.ptmi.gitv.tv
+
+# ===== 第 2 组：内容源与广告下发接口（去贴片广告的关键）=====
+data.video.ptqy.gitv.tv
+doh.ptqy.gitv.tv
+msg.ptqy.gitv.tv
+scs-hcdn.ptqy.gitv.tv
+sdk-cache.video.ptqy.gitv.tv
+api.enttv.xiaomi.com
+ccg.migc.xiaomi.com
+dbyyapi.bestv.com.cn
+image.cdn.pandora.xiaomi.com
+media.icntv.pre.pandora.xiaomi.com
+milink.pandora.xiaomi.com
+milink.pds.pandora.xiaomi.com
+ottimg.cdn.pandora.xiaomi.com
+package.cdn.pandora.xiaomi.com
+static.enttv.xiaomi.com
+t1.a.market.xiaomi.com
+t3.a.market.xiaomi.com
+user.ptmi.pandora.xiaomi.com
+user.t001.pandora.xiaomi.com
+video.market.xiaomi.com
+h5.v.mitvos.com
+videodaily.ptmi.gitv.tv
+cn.miguvideo.migutv
+api.ptmi.gitv.tv
+bss.ptmi.gitv.tv
+appstore-api.ptmi.gitv.tv
+auth.api.gitv.tv
+flux.ptqy.gitv.tv
+boxvideo.xl.ptxl.gitv.tv
+kid.xl.ptxl.gitv.tv
+om.v.mitvos.com
+
+# ===== 第 3 组：其他相关（遥测/统计，拦不拦都行）=====
+sv-video.play.aiseet.atianqi.com
+tv.aiseet.atianqi.com
+vv.play.aiseet.atianqi.com
+omgmta.play.aiseet.atianqi.com
+com.mitv.instantstats.api.com
+com.mitv.instantstats.model.net
+pn-sdkconfig-bak.onetrack.mi.com
+cleantools.mitv.com
