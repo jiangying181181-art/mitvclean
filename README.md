@@ -1,5 +1,12 @@
 # mitvclean
 
+[![MIT License](https://img.shields.io/badge/许可-MIT-green.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+[![零依赖](https://img.shields.io/badge/依赖-0-brightgreen.svg)](pyproject.toml)
+[![测试](https://img.shields.io/badge/测试-17%2B5%20通过-success.svg)](tests/)
+[![实机验证](https://img.shields.io/badge/实机-MiTV--ANSP0%20已验证-brightgreen.svg)](profiles/mitv-ansp0/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **小米电视去臃肿与去广告工具** —— 纯 Python 3.9+，零第三方依赖，不装 adb 也能用。
 
 只做**可逆**操作：所有改动都是 `pm disable-user`（禁用，不是卸载），动手前先落盘记录每个包的原始状态，一条命令就能还原。
@@ -132,6 +139,28 @@ mitvclean --host 192.168.1.50 scan
 `scan` 的产物：
 - `work/hosts-scan.txt` —— 粘到路由器的「自定义 Hosts」
 - `work/domains.json` —— 分类明细（广告域 / 内容源域 / 其他）
+
+#### 往路由器贴 hosts：按组来，别一次全上
+
+清单里 73 条域名分 3 组，**副作用从小到大**。建议分三步：
+
+```bash
+# ① 先出第 1 组（纯广告域，拦了没副作用）—— 开机广告、贴片广告就靠这一组
+mitvclean hosts --profile mitv-ansp0 --group 1 --out work
+
+# ② 断掉贴片广告后，再加第 2 组（内容源域）—— 有代价，见下
+mitvclean hosts --profile mitv-ansp0 --group 2 --out work
+
+# ③ 想要一份全量（不推荐直接用）
+mitvclean hosts --profile mitv-ansp0 --group all --out work
+```
+
+**粘贴位置**：米家 App → 路由器 → 工具箱 → 自定义 Hosts（网页版没有这个功能）。
+**格式是 IP 在前**（`127.0.0.1 域名`），和小米路由器要求一致，和标准 hosts 相反。
+
+> ⚠️ 第 2 组是内容源域名，拦掉后**对应 App 会打不开**。
+> 哪个 App 不出画了，就从清单里删掉那一条，不用整套回退。
+> 每次只加几条、试一次，比一次贴 73 条省事得多。
 
 ### 6. 还原
 

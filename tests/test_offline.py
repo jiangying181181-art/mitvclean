@@ -248,6 +248,56 @@ def test_cli_fills_defaults():
     assert not hasattr(args, "host") or args.host is None
 
 
+def test_host_groups_split_by_marker():
+    """hosts.txt 的“第 N 组”标记必须能切开，且各组不重不漏。"""
+    from mitvclean.profiles import list_profiles, load_profile
+
+    for slug in list_profiles():
+        p = load_profile(slug)
+        groups = p.host_groups()
+        assert groups, f"{slug} 解析不出任何 hosts 组"
+        total = 0
+        for title, domains in groups:
+            assert title, f"{slug} 有个组没有标题"
+            assert domains, f"{slug} 的组 {title!r} 是空的"
+            total += len(domains)
+            for d in domains:
+                assert "." in d and " " not in d, f"{slug} 的域名不合法：{d!r}"
+        # 分组切分不能改变域名总数
+        raw = [
+            ln.split()[0]
+            for ln in p.hosts_path.read_text(encoding="utf-8-sig").splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        ]
+        assert total == len(raw), f"{slug} 分组后总数对不上：{total} != {len(raw)}"
+
+
+def test_hosts_group_output_is_ip_first():
+    """分组生成的 hosts 文件：每条规则 IP 在前，且组数与组内条数正确。"""
+    import tempfile
+    from pathlib import Path
+    from mitvclean.cli import build_parser, main
+
+    parser = build_parser()
+    args = parser.parse_args(["hosts", "--profile", "mitv-ansp0", "--out", "x"])
+    assert args.group == "all"
+
+    with tempfile.TemporaryDirectory() as td:
+        rc = main(["hosts", "--profile", "mitv-ansp0", "--group", "1", "--out", td])
+        assert rc == 0
+        out = Path(td) / "hosts-mitv-ansp0-group1.txt"
+        assert out.exists()
+        lines = [l for l in out.read_text(encoding="utf-8").splitlines() if l.strip()]
+        rules = [l for l in lines if not l.startswith("#")]
+        assert rules, "分组文件里没有规则"
+        for r in rules:
+            assert r.startswith("127.0.0.1 "), f"IP 不在前：{r!r}"
+        # 第一组的条数必须等于清单里第一组的条数
+        from mitvclean.profiles import load_profile
+        g = load_profile("mitv-ansp0").host_groups()
+        assert len(rules) == len(g[0][1])
+
+
 # ---------------------------------------------------------------- 运行
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

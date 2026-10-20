@@ -1,0 +1,44 @@
+name: Bug 反馈
+description: 工具跑不起来、结果不对、协议不兼容
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 你执行了什么
+      description: 完整命令，例如 `mitvclean --host 192.168.x.x debloat --dry-run`
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: 实际输出
+      description: 粘贴原始输出，不要只写“报错了”
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: mitvclean 版本 / commit
+      placeholder: 0.1.0 / a1b2c3d
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 机型与固件
+      placeholder: MiTV-ANSP0 / 22.12.6.2963
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python 版本
+      placeholder: 3.13
+    validations:
+      required: true
+  - type: textarea
+    id: adb
+    attributes:
+      label: 官方 adb 的行为（如果能对比）
+      description: 官方 adb 能连上但本工具不行？把官方 adb 的输出也贴上来

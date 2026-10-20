@@ -1,0 +1,57 @@
+name: 机型画像提交
+description: 提交一台新电视的实测画像（最常见的贡献方式，不需要改代码）
+labels: ["profile"]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: 型号（ro.product.model）
+      placeholder: MiTV-ANSP0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 设备代号（ro.product.device）
+      placeholder: jobs
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android 版本
+      placeholder: Android 9 (SDK 28)
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: 固件版本
+      placeholder: 22.12.6.2963
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 这台机器独有的坑
+      description: ADB 重启自关、某个包禁了会进不去桌面、固件锁死某属性……写在这里
+    validations:
+      required: true
+  - type: textarea
+    id: verified
+    attributes:
+      label: 验证了哪些操作
+      description: 例如：禁了 29 个包后 MemAvailable 从 531MB 升到 800MB
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查
+      options:
+        - label: 没有禁桌面 / 系统设置 / 平台输入服务
+          required: true
+        - label: 只用 pm disable-user，没有 uninstall
+          required: true
+        - label: 提交里不含我的 IP / MAC / SN
+          required: true

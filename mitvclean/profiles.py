@@ -16,10 +16,15 @@ mitvclean.profiles — 设备画像（机型适配数据层）
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 PROFILES_DIR = Path(__file__).resolve().parent.parent / "profiles"
+
+# hosts.txt 里的分组标记，形如：
+#   # ===== 第 1 组：小米广告配置与交易平台（安全，优先）=====
+GROUP_RE = re.compile(r"^#\s*=+\s*(?:第\s*)?(\d+)\s*组[：:]\s*(.*?)\s*=+\s*$")
 
 
 class ProfileError(RuntimeError):
@@ -64,6 +69,35 @@ class Profile:
             bits.append(self.android)
         bits.append("已实机验证" if self.verified else "未实机验证")
         return " · ".join(bits)
+
+    def host_groups(self) -> list[tuple[str, list[str]]]:
+        """把 hosts.txt 按“第 N 组”标记切成若干组。
+
+        返回 [(组标题, [域名...]), ...]；没有分组标记时整个文件作为一组。
+        分组的作用是让使用者**分批生效**：第 1 组是纯广告域，拦了没副作用；
+        第 2 组是内容源域，拦了对应 App 会打不开，需要按需再加。
+        """
+        groups: list[tuple[str, list[str]]] = []
+        cur_title = "全部"
+        cur: list[str] = []
+        for raw in self.hosts_path.read_text(encoding="utf-8-sig").splitlines():
+            t = raw.strip()
+            m = GROUP_RE.match(t)
+            if m:
+                if cur:
+                    groups.append((cur_title, cur))
+                cur_title = m.group(2) or f"第 {m.group(1)} 组"
+                cur = []
+                continue
+            if not t or t.startswith("#"):
+                continue
+            domain = t.split()[0]
+            if domain.startswith("127.0.0.1"):
+                domain = domain.split()[-1]
+            cur.append(domain)
+        if cur:
+            groups.append((cur_title, cur))
+        return groups
 
 
 def _load_meta(path: Path) -> dict:

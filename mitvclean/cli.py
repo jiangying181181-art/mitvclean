@@ -255,7 +255,12 @@ def cmd_scan(args) -> int:
 
 
 def cmd_hosts(args) -> int:
-    """按画像生成 hosts 清单。"""
+    """按画像生成 hosts 清单。
+
+    默认按“组”分文件输出：第 1 组是纯广告域（拦了没副作用），第 2 组是
+    内容源域（拦了对应 App 会打不开）。用 --group N 只出某一组，
+    用 --group all 出一份全量。
+    """
     out = Path(args.out or DEFAULT_OUT)
     out.mkdir(parents=True, exist_ok=True)
     slug = args.profile
@@ -263,29 +268,52 @@ def cmd_hosts(args) -> int:
         with _connect(args) as dev:
             slug = _profile_for(args, dev)
     p = load_profile(slug)
-    lines = [
-        f"# mitvclean 生成 · 画像 {slug}",
-        f"# {p.summary()}",
-        "# 格式：IP地址 域名（IP 在前）",
-        "# 用法：路由器 -> 自定义 Hosts（小米路由器在米家 App 的工具箱里）",
-        "#",
-        "# ⚠️ 内容源域名拦掉后该内容源会打不开 —— 哪条不行删哪条即可",
-        "",
-    ]
-    n = 0
-    for raw in p.hosts_path.read_text(encoding="utf-8-sig").splitlines():
-        t = raw.strip()
-        if not t or t.startswith("#"):
-            continue                      # 源文件里的分组说明不重复输出
-        domain = t.split()[0]
-        if domain.startswith("127.0.0.1"):
-            lines.append(t)
-        else:
-            lines.append(f"127.0.0.1 {domain}")
-        n += 1
-    f = out / f"hosts-{slug}.txt"
-    f.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    print(f"已生成 {f}（{n} 条规则）")
+
+    groups = p.host_groups()
+    if not groups:
+        print(f"画像 {slug} 的 hosts.txt 里没有域名")
+        return 1
+
+    want = getattr(args, "group", None) or "all"
+
+    def write(name: str, title: str, domains: list[str]) -> Path:
+        lines = [
+            f"# mitvclean 生成 · 画像 {slug} · {title}",
+            f"# {p.summary()}",
+            "# 格式：IP地址 域名（IP 在前，小米路由器要求）",
+            "# 用法：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts",
+            "#",
+            "# ⚠️ 内容源域名拦掉后该内容源会打不开 —— 哪条不行删哪条即可",
+            "",
+        ]
+        lines += [f"127.0.0.1 {d}" for d in domains]
+        f = out / name
+        f.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        return f
+
+    if want == "all":
+        all_domains = [d for _, ds in groups for d in ds]
+        f = write(f"hosts-{slug}.txt", "全部", all_domains)
+        print(f"已生成 {f}（{len(all_domains)} 条规则）")
+    else:
+        try:
+            idx = int(want)
+        except ValueError:
+            print(f"--group 只能是数字或 all，收到 {want!r}")
+            return 2
+        if idx < 1 or idx > len(groups):
+            print(f"画像 {slug} 只有 {len(groups)} 组，没有第 {idx} 组")
+            return 2
+        title, domains = groups[idx - 1]
+        f = write(f"hosts-{slug}-group{idx}.txt", f"第 {idx} 组 · {title}", domains)
+        print(f"已生成 {f}（{len(domains)} 条规则）")
+
+    print()
+    print("可用分组（分批生效，副作用从小到大）：")
+    for i, (title, ds) in enumerate(groups, 1):
+        print(f"  第 {i} 组（{len(ds):>2} 条）{title}")
+    print()
+    print("粘贴位置：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts")
     return 0
 
 
@@ -424,6 +452,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_scan)
 
     s = sub.add_parser("hosts", help="按画像生成 hosts 清单", parents=[common])
+    s.add_argument("--group", default="all",
+                   help="只生成某一组（1/2/3…），或 all 生成全量（默认 all）")
     s.set_defaults(func=cmd_hosts)
 
     s = sub.add_parser("adswitch", help="读/写广告开关", parents=[common])
