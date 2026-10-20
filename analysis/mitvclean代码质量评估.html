@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mitvclean · 代码质量</title>
+<style>
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --surface-subtle:#f7f8f7;
+  --ink:#17201c; --muted:#68736d; --line:#dfe4e1; --line-strong:#cbd3ce;
+  --green:#156b4a; --green-dark:#0e5238; --green-soft:#e7f2ec;
+  --red:#b83b35; --red-soft:#f8e9e7; --amber:#9a6418; --amber-soft:#f8eedc;
+  --blue:#356a91; --blue-soft:#e7eff5;
+  --code-bg:#0f1a16; --code-ink:#d9e6df;
+  --mono:ui-monospace,SFMono-Regular,"Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink); background:var(--bg);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;line-height:1.7;font-size:15px}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+/* ---------- 侧边 TOC ---------- */
+.toc{position:sticky;top:0;height:100vh;overflow-y:auto;background:#17231e;color:#edf4f0;padding:22px 16px;border-right:1px solid #25362e}
+.toc .brand{display:flex;align-items:center;gap:11px;padding:0 6px 22px}
+.toc .brand-mark{display:grid;place-items:center;width:38px;height:38px;background:#e7f2ec;color:var(--green-dark);font-weight:800;border-radius:8px;font-size:12px;letter-spacing:.5px}
+.toc .brand strong{display:block;font-size:14px}
+.toc .brand span{display:block;margin-top:2px;color:#97a89f;font-size:11px}
+.toc nav{display:grid;gap:2px}
+.toc a{display:block;padding:7px 10px;border-radius:6px;color:#aebdb5;font-size:13px;border-left:2px solid transparent;transition:.15s}
+.toc a:hover{color:#fff;background:rgba(255,255,255,.06);text-decoration:none}
+.toc a.active{color:#fff;background:#274337;border-left-color:#4fbf8d}
+.toc a.l2{padding-left:24px;font-size:12.5px;color:#8fa29a}
+.toc .toc-label{padding:14px 10px 6px;font-size:10.5px;letter-spacing:1.5px;color:#6f8379;text-transform:uppercase}
+main{min-width:0}
+/* ---------- Hero ---------- */
+.hero{background:linear-gradient(135deg,#0e5238 0%,#14573f 45%,#1d3b30 100%);color:#edf4f0;padding:56px 0 44px}
+.hero .wrap{max-width:940px;margin:0 auto;padding:0 32px}
+.hero .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:2px;color:#9dcdb6;text-transform:uppercase;font-weight:600}
+.hero .kicker::before{content:"";width:26px;height:2px;background:#4fbf8d}
+.hero h1{margin:14px 0 10px;font-size:32px;line-height:1.25}
+.hero p{margin:0;color:#b9c9c1;max-width:74ch;font-size:15px}
+.hero .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.hero .chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);padding:6px 12px;border-radius:999px;font-size:12px;color:#d8e5de}
+.hero .chip b{color:#fff;font-weight:600}
+.hero .conclusion{margin-top:24px;padding:16px 18px;border-radius:10px;background:rgba(255,255,255,.07);border-left:3px solid #4fbf8d;font-size:14px;color:#cfe0d7}
+/* ---------- 正文 ---------- */
+.content{max-width:940px;margin:0 auto;padding:48px 32px 90px}
+section{margin-top:52px}
+section:first-child{margin-top:0}
+h2{font-size:24px;margin:0 0 6px;display:flex;align-items:center;gap:12px}
+h2 .sec-no{font-size:13px;font-weight:700;color:#fff;background:var(--green);width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none}
+h3{font-size:17.5px;margin:34px 0 10px;color:#14352a}
+h4{font-size:15px;margin:22px 0 8px;color:#0e5238}
+p{margin:10px 0;color:#2c3731}
+.lead{border-left:3px solid var(--green);padding:10px 16px;background:var(--green-soft);border-radius:0 8px 8px 0;font-size:14.5px;color:#173b2d;margin:14px 0}
+/* ---------- 代码框 ---------- */
+.codebox{margin:16px 0;border-radius:10px;overflow:hidden;border:1px solid #1c2d25;background:var(--code-bg);box-shadow:0 6px 18px rgba(20,40,32,.12)}
+.codebox .bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#14221c;border-bottom:1px solid #22352c;color:#7f9a8e;font-size:11.5px}
+.codebox .bar .dot{width:9px;height:9px;border-radius:50%}
+.codebox .bar .dot:nth-child(1){background:#f0635c}.codebox .bar .dot:nth-child(2){background:#e2b25c}.codebox .bar .dot:nth-child(3){background:#5fc98a}
+.codebox .bar .fname{margin-left:6px;font-family:var(--mono);color:#9fb6ab}
+.codebox pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.65;color:var(--code-ink)}
+.codebox pre code{font-family:inherit;background:none;color:inherit;padding:0}
+.tok-c{color:#6d8a7e;font-style:italic}
+.tok-s{color:#e6c97a}
+.tok-k{color:#7fd6a8;font-weight:600}
+.tok-n{color:#86c5e8}
+.tok-f{color:#d9a7f0}
+.tok-p{color:#c88fd8}
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.06)}
+th{background:#eef3f0;color:#24402f;text-align:left;padding:10px 14px;font-size:12.5px;letter-spacing:.3px;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code,li code,p code{font-family:var(--mono);font-size:12px;background:#e9efec;border:1px solid #dbe2de;border-radius:5px;padding:1.5px 6px;color:#0e5238}
+/* ---------- 卡片 / Callout ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.card h4{margin:0 0 8px}
+.card p{margin:6px 0;font-size:13.5px}
+.card .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.callout{border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.info{background:var(--blue-soft);border-color:#c9dbe8;color:#234a66}
+.callout.warn{background:var(--amber-soft);border-color:#e8d9b8;color:#6d4712}
+.callout.ok{background:var(--green-soft);border-color:#c4e0d1;color:#14543a}
+.callout.red{background:var(--red-soft);border-color:#ecc9c6;color:#7c2b27}
+.callout .t{font-weight:700;display:block;margin-bottom:4px}
+/* ---------- 分层图 ---------- */
+.layers{display:grid;gap:0;margin:20px 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:var(--surface)}
+.layer{padding:16px 20px;border-top:1px solid var(--line)}
+.layer:first-child{border-top:none}
+.layer .lname{font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px}
+.layer .lname .badge{font-size:10.5px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:6px}
+.layer .ldesc{font-size:13px;color:var(--muted);margin-top:4px}
+.layer .lfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.layer .lfiles span{font-family:var(--mono);font-size:11.5px;background:#f0f3f1;border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:#33453c}
+.l-base{background:#e7f2ec}.l-domain{background:#fff}.l-agent{background:#e7eff5}
+.badge-base{background:#c4e0d1;color:#14543a}.badge-domain{background:#e8d9b8;color:#6d4712}.badge-agent{background:#c9dbe8;color:#234a66}
+/* ---------- 流程图 ---------- */
+.flow{display:grid;gap:10px;margin:18px 0}
+.flow .step{display:grid;grid-template-columns:46px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.flow .idx{width:46px;height:46px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:16px;color:#fff}
+.flow .step .st{font-weight:700;font-size:14px}
+.flow .step .sd{font-size:12.8px;color:var(--muted)}
+.flow .side{font-family:var(--mono);font-size:11px;color:#3f5249;background:#eef2ef;border-radius:7px;padding:4px 9px;white-space:nowrap}
+.flow .join{text-align:center;color:var(--green);font-weight:700;font-size:13px;letter-spacing:3px}
+/* ---------- 时间线 ---------- */
+.master-tl{position:relative;margin:24px 0;padding-left:34px}
+.master-tl::before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:3px;background:linear-gradient(#156b4a,#356a91)}
+.master-tl .mt{position:relative;margin:0 0 14px}
+.master-tl .mt .dot{position:absolute;left:-32px;top:8px;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--green)}
+.master-tl .mt .ph{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.master-tl .mt .ph .badge{font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:6px}
+.master-tl .mt .ph .date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.master-tl .mt .ph .commit{font-family:var(--mono);font-size:11.5px;color:#4a5c53;background:#eef2ef;border-radius:6px;padding:2px 8px}
+.master-tl .mt .ph .title{font-weight:700;font-size:15px}
+.master-tl .mt .desc{font-size:13px;color:#3a4a42;margin-top:3px}
+.b-a{background:#e7f2ec;color:#14543a}.b-b{background:#dcefe4;color:#14543a}.b-c{background:#f8eedc;color:#6d4712}
+.b-d{background:#f3e8c9;color:#6d4712}.b-e{background:#e7eff5;color:#234a66}.b-f{background:#e8d9b8;color:#6d4712}
+.b-g{background:#c9dbe8;color:#234a66}.b-h{background:#d9c9e8;color:#4a2a66}
+/* ---------- 巧思可折叠卡 ---------- */
+.clever{display:grid;gap:14px;margin:14px 0}
+.cv{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.cv .cv-h{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:13px 18px;background:#fafbfa;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.cv .cv-n{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff}
+.cv .cv-t{font-weight:800;font-size:14.5px;line-height:1.4}
+.cv .cv-f{font-family:var(--mono);font-size:11px;color:var(--muted);background:#eef2ef;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.cv .cv-b{display:none;padding:6px 18px 16px}
+.cv.open .cv-b{display:block}
+.cv .cv-b p{font-size:13.6px;color:#33423b}
+.cv .cv-b .why{margin-top:10px;padding:10px 14px;border-radius:9px;background:var(--green-soft);border-left:3px solid var(--green);font-size:13px;color:#173b2d}
+.cv .toggle{color:var(--muted);font-size:18px;transition:.2s}
+.cv.open .toggle{transform:rotate(45deg)}
+/* ---------- 双栏 / 列表 / 响应式 ---------- */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.check li{margin:6px 0;list-style:none;padding-left:28px;position:relative}
+.check li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--green);font-weight:800}
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .toc{display:none}
+  .hero h1{font-size:25px}
+  .dual{grid-template-columns:1fr}
+  .cv .cv-h{grid-template-columns:40px 1fr}
+  .cv .cv-f{display:none}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc">
+    <div class="brand">
+      <div class="brand-mark">mitv</div>
+      <div><strong>代码质量</strong><span>mitvclean 深度解构</span></div>
+    </div>
+    <nav id="tocNav"></nav>
+  </aside>
+  <main>
+    <header class="hero">
+      <div class="wrap">
+        <div class="kicker">OpenSource-X · 代码质量</div>
+        <h1>mitvclean · 代码质量</h1>
+        <p>这代码能改吗、从哪改——把印象换成可复现的指标</p>
+        <div class="meta">
+          <span class="chip">分析对象 <b>mitvclean</b></span>
+          <span class="chip">版本 <b>b277c37</b></span>
+          <span class="chip">数据来源 <b>本地仓库直读</b></span>
+          <span class="chip">日期 <b>2026-10-21</b></span>
+        </div>
+        <div class="conclusion"><b>结论先行：</b>见正文第一节「结论」，每条结论均可回溯到具体文件路径与行号。</div>
+      </div>
+    </header>
+    <div class="content">
+<h3>mitvclean 代码质量评估</h3>
+<ul class="check"><li><strong>分析对象</strong>：<code>mitvclean</code></li><li><strong>数据来源</strong>：本地仓库实测（radon 6.0.1 / ruff / coverage，均在隔离 venv 中执行）</li><li><strong>分析日期</strong>：2026-10-21</li><li><strong>分析版本</strong>：<code>b277c37</code></li><li><strong>分析角度</strong>：角度五 · 代码质量</li></ul>
+<section id="s1"><h2><span class="sec-no">1</span>结论</h2>
+<p><strong>整体评级：良好偏上，工程化欠一档。</strong></p>
+<table><thead><tr><th>维度</th><th>实测</th><th>判定</th></tr></thead><tbody><tr><td>平均圈复杂度</td><td><strong>3.76</strong>（122 个块）</td><td>✅ 优秀（&lt; 5）</td></tr><tr><td>复杂度热点</td><td>CC 最高 17（<code>cmd_doctor</code>）</td><td>⚠️ 1 处越界</td></tr><tr><td>源码规模</td><td>1626 LOC / 945 语句</td><td>✅ 规模合理</td></tr><tr><td>注释密度</td><td>(C+M)%L = 15%</td><td>✅ 优秀（注释是解释"为什么"）</td></tr><tr><td>测试覆盖</td><td><strong>34%</strong>（离线测试口径）</td><td>⚠️ 偏低</td></tr><tr><td>静态检查</td><td>ruff <strong>49 条</strong>告警</td><td>❌ 未进 CI</td></tr><tr><td>循环依赖</td><td><strong>0</strong>（4 模块 + 5 子模块，依赖图无环）</td><td>✅ 优秀</td></tr><tr><td>第三方依赖</td><td><strong>0</strong></td><td>✅ 双刃剑</td></tr></tbody></table>
+<p><strong>唯一必须立刻处理的 P0</strong>：<code>mitvclean/ads.py:217</code> <code>set_ad_settings</code> 不记录原值——这<strong>违反了项目自己在 README 里声明的"只做可逆操作"</strong>。不是质量问题，是承诺一致性问题。</p>
+<p><strong>最值得做的一步</strong>：把 <code>ruff check</code> 加进 CI。49 条告警里 10 条可自动修、其余大多集中在 18 处 <code>except Exception</code>（BLE001）——这些恰恰是"外部设备返回什么都有可能"的合理场景，但<strong>必须逐条确认是不是该捕获</strong>。CI 一接上，代码质量的回归就被自动卡住了。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s2"><h2><span class="sec-no">2</span>一、指标总览</h2>
+<table><thead><tr><th>指标</th><th>实测值</th><th>阈值</th><th>判定</th><th>采集命令</th></tr></thead><tbody><tr><td>平均圈复杂度</td><td>3.76</td><td>&lt; 5 优 / 5-10 中 / &gt; 15 差</td><td>✅ 优</td><td><code>radon cc mitvclean tests -s -a</code></td></tr><tr><td>最高圈复杂度</td><td>17（<code>cmd_doctor</code>）</td><td>≤ 15</td><td>⚠️ 越界</td><td>同上</td></tr><tr><td>CC &gt; 10 的函数数</td><td>4</td><td>0</td><td>⚠️</td><td>同上</td></tr><tr><td>源码 LOC</td><td>1626</td><td>—</td><td>✅</td><td><code>radon raw mitvclean -s</code></td></tr><tr><td>逻辑行 SLOC</td><td>1115</td><td>—</td><td>—</td><td>同上</td></tr><tr><td>注释率 (C+M)%L</td><td>15%</td><td>&gt; 8%</td><td>✅ 优</td><td>同上</td></tr><tr><td>测试文件行数</td><td>525</td><td>—</td><td>✅</td><td><code>wc -l tests/*.py</code></td></tr><tr><td>语句覆盖率</td><td>34%</td><td>&gt; 60%</td><td>⚠️ 偏低</td><td><code>coverage run --source=mitvclean -m tests.test_offline</code></td></tr><tr><td>ruff 告警</td><td>49</td><td>0</td><td>❌</td><td><code>ruff check mitvclean tests</code></td></tr><tr><td>可自动修复</td><td>10</td><td>—</td><td>—</td><td><code>ruff check --fix</code></td></tr><tr><td>循环依赖</td><td>0</td><td>0</td><td>✅ 优</td><td>手工核 import 图</td></tr><tr><td>直接依赖</td><td>0</td><td>—</td><td>✅/⚠️</td><td><code>pyproject.toml</code></td></tr><tr><td>CI 覆盖的 Python 版本</td><td>3.9–3.13 × 3 OS</td><td>—</td><td>✅ 优</td><td><code>.github/workflows/test.yml</code></td></tr></tbody></table>
+<p><strong>覆盖率口径说明</strong>：34% 是<strong>只跑 <code>test_offline.py</code></strong> 的结果。<code>test_adb_protocol.py</code> 用假 adbd 覆盖了 <code>adb.py</code> 的握手与流控路径，但因覆盖率工具未合并运行，此处未计入。合并两个测试文件后的实际覆盖率会更高（<code>adb.py</code> 的 19% 主要是被协议测试覆盖的握手段被离线测试完全跳过）。<strong>此数字为保守值。</strong></p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s3"><h2><span class="sec-no">3</span>二、复杂度热点 Top-10</h2>
+<p>按 radon 圈复杂度（CC）排序：</p>
+<table><thead><tr><th>#</th><th>函数</th><th>文件:行</th><th>CC</th><th>等级</th><th>说明</th></tr></thead><tbody><tr><td>1</td><td><code>cmd_doctor</code></td><td><code>cli.py:131</code></td><td><strong>17</strong></td><td>C</td><td>体检报告，混合三种关注点</td></tr><tr><td>2</td><td><code>disable_packages</code></td><td><code>packages.py:158</code></td><td><strong>14</strong></td><td>C</td><td>禁用主流程（状态判定 + 落盘 + 逐条执行）</td></tr><tr><td>3</td><td><code>FakeAdbd._session</code></td><td><code>test_adb_protocol.py:57</code></td><td>11</td><td>C</td><td>假 adbd 主循环（测试代码，可接受）</td></tr><tr><td>4</td><td><code>cmd_debloat</code></td><td><code>cli.py:292</code></td><td><strong>11</strong></td><td>C</td><td>禁用命令的 CLI 编排</td></tr><tr><td>5</td><td><code>cmd_info</code></td><td><code>cli.py:90</code></td><td>10</td><td>B</td><td>设备信息</td></tr><tr><td>6</td><td><code>cmd_scan</code></td><td><code>cli.py:181</code></td><td>10</td><td>B</td><td>域名提取编排</td></tr><tr><td>7</td><td><code>clean_ad_cache</code></td><td><code>ads.py:240</code></td><td>10</td><td>B</td><td>缓存清理</td></tr><tr><td>8</td><td><code>find_ad_settings</code></td><td><code>ads.py:191</code></td><td>9</td><td>B</td><td>广告键探测</td></tr><tr><td>9</td><td><code>enable_packages</code></td><td><code>packages.py:201</code></td><td>8</td><td>B</td><td>还原</td></tr><tr><td>10</td><td><code>extract_from_apk</code></td><td><code>ads.py:99</code></td><td>8</td><td>B</td><td>APK 扫描</td></tr></tbody></table>
+<h3>逐个诊断</h3>
+<p><strong><code>cmd_doctor</code>（CC 17，<code>cli.py:131-178</code>）—— 唯一的 C 级生产函数</strong></p>
+<p>它同时在做四件事：</p>
+<ol class="check"><li>读设备型号与系统版本</li><li>探测 settings 里的广告开关</li><li>遍历<strong>所有画像</strong>的 debloat 清单，逐个查包状态</li><li>列 sdcard 缓存目录</li></ol>
+<p>第 3 步尤其糟糕：它在内层循环里<strong>反复调用 <code>list_packages(dev)</code></strong>（<code>cli.py:152-153</code>）——每遍历一个画像就发两次 <code>pm list packages</code>。当前只有一个画像所以看不出来，加到 5 个画像就是 10 次全量包列举。</p>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python">def cmd_doctor(args) -&gt; int:
+    ...
+    _doctor_ad_settings(dev)      # 拆出，CC ~4
+    _doctor_ad_packages(dev)      # 拆出，并把 list_packages 提到循环外
+    _doctor_cache(dev)            # 拆出</code></pre></div>
+<p><strong>建议拆分</strong>： 同时把 <code>packages.list_packages</code> 的两次调用<strong>提到画像循环之外</strong>，只查一次。</p>
+<p><strong><code>disable_packages</code>（CC 14，<code>packages.py:158-198</code>）—— 业务核心，可接受但可读性差</strong></p>
+<p>三个阶段（判定目标 / 落盘 / 执行）串在一个函数里。业务逻辑本身是正确的、顺序也是对的，但 40 行里混了 3 个关注点。</p>
+<p><strong>建议</strong>：拆成 <code>_select_targets(state)</code> / <code>_execute_disable(dev, targets)</code>，主函数降到 CC 8 以下。注意<strong>顺序不可变</strong>（判定→落盘→执行），拆分时要保持。</p>
+<p><strong>协议层与测试代码的复杂度都在健康范围</strong>：<code>adb.py</code> 最高 CC 8（<code>pull</code>），且是"长而浅"——513 行但每个函数都在 20 行以内。测试里的 <code>FakeAdbd._session</code>（CC 11）是要模拟的状态机，复杂度天然高，可接受。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s4"><h2><span class="sec-no">4</span>三、覆盖率与未覆盖的关键模块</h2>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">text</span></div><pre><code data-lang="text">Name                    Stmts   Miss  Cover   Missing
+----------------------------------------------------
+mitvclean\__init__.py       2      0   100%
+mitvclean\adb.py          271    219    19%
+mitvclean\ads.py          136     96    29%
+mitvclean\cli.py          305    250    18%
+mitvclean\packages.py     155     31    80%
+mitvclean\profiles.py      76     30    61%
+----------------------------------------------------
+TOTAL                     945    626    34%</code></pre></div>
+<table><thead><tr><th>模块</th><th>覆盖率</th><th>判断</th></tr></thead><tbody><tr><td><code>packages.py</code></td><td><strong>80%</strong></td><td>✅ 好。核心业务有测试</td></tr><tr><td><code>profiles.py</code></td><td>61%</td><td>⚠️ 可接受。缺 <code>host_groups()</code> 的边界测试（本次已补）</td></tr><tr><td><code>ads.py</code></td><td>29%</td><td>⚠️ 偏低。<code>extract_from_apk</code> / <code>pull_apks</code> / <code>find_ad_settings</code> 未覆盖</td></tr><tr><td><code>adb.py</code></td><td>19%</td><td>⚠️ 保守值。协议测试实际覆盖了握手段，但未合并统计</td></tr><tr><td><code>cli.py</code></td><td><strong>18%</strong></td><td>❌ <strong>最薄弱环节</strong></td></tr></tbody></table>
+<h3>未覆盖的关键位置（按风险排序）</h3>
+<table><thead><tr><th>位置</th><th>未覆盖内容</th><th>风险</th></tr></thead><tbody><tr><td><code>adb.py:153-184</code></td><td><code>_parse_pem_rsa</code> 手写 DER 解析</td><td><strong>高</strong> — 唯一手写密码学代码，CI 从不执行（CI 未装 cryptography）</td></tr><tr><td><code>cli.py:91-384</code></td><td>几乎所有子命令的完整流程</td><td><strong>高</strong> — CLI 是用户唯一入口，出错直接影响使用</td></tr><tr><td><code>ads.py:105-125</code></td><td><code>extract_from_apk</code> 的 zipfile 遍历</td><td>中 — 逻辑简单但依赖真实 APK 结构</td></tr><tr><td><code>ads.py:153-179</code></td><td><code>pull_apks</code> 的路径解析与临时文件清理</td><td>中 — 临时文件 <code>/data/local/tmp/{pkg}.apk</code> 清理失败会留垃圾</td></tr><tr><td><code>ads.py:251-267</code></td><td><code>clean_ad_cache</code> 的 <code>rm -rf {d}/*</code> 分支</td><td><strong>高</strong> — 唯一的递归删除操作，且 <code>{d}</code> 来自命令行参数</td></tr></tbody></table>
+<p><strong>特别提示</strong>：<code>ads.py:263</code> 的 <code>dev.run(f"rm -rf {d}/*")</code> 中 <code>{d}</code> <strong>来自 <code>args.dir</code> 用户输入，未做路径校验</strong>。虽然 <code>clean_ad_cache</code> 的调用方是 CLI 自己的默认列表（<code>cli.py:353-356</code>），但 <code>--dir</code> 参数允许用户传任意路径。与包名白名单（<code>packages.py:23</code>）形成鲜明对比——<strong>同一个项目里，一条输入做了严格校验，另一条没做</strong>。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s5"><h2><span class="sec-no">5</span>四、ruff 静态检查结果</h2>
+<p><code>ruff check mitvclean tests</code> → <strong>49 条</strong>。</p>
+<h3>按规则分类</h3>
+<table><thead><tr><th>规则</th><th>条数</th><th>位置</th><th>判断</th></tr></thead><tbody><tr><td><code>BLE001</code> 盲捕 <code>Exception</code></td><td><strong>18</strong></td><td>遍布 <code>ads.py</code>(8) <code>packages.py</code>(4) <code>cli.py</code>(3) <code>adb.py</code>(1) 测试(4)</td><td>⚠️ 多数合理（设备返回不可控），但<strong>必须逐条确认</strong></td></tr><tr><td><code>F401</code> 未使用的 import</td><td>3</td><td><code>test_adb_protocol.py:21, 152</code>、<code>test_offline.py:8</code></td><td>✅ 直接删</td></tr><tr><td><code>RUF059</code> 未使用的解包变量</td><td>5</td><td><code>test_adb_protocol.py:77, 164</code></td><td>✅ 测试代码风格问题</td></tr><tr><td><code>S110</code> / <code>S112</code> 静默吞异常</td><td>8</td><td><code>cli.py:173</code> 等</td><td>⚠️ 多数是"这条探测失败就跳过"的可接受场景</td></tr><tr><td><code>I001</code> import 排序</td><td>1</td><td><code>test_adb_protocol.py:19</code></td><td>✅ 直接修</td></tr><tr><td><code>F841</code> 未使用的局部变量</td><td>1</td><td><code>test_adb_protocol.py:150</code></td><td>✅ 直接修</td></tr><tr><td><code>PIE810</code> 可用元组</td><td>1</td><td><code>test_adb_protocol.py:83</code></td><td>✅ 直接修</td></tr></tbody></table>
+<p><strong>10 条可自动修复</strong>（<code>ruff check --fix</code>），其余 39 条需要人工判断。</p>
+<h3>关于 18 条 BLE001</h3>
+<p>这些 <code>except Exception</code> 绝大多数出现在<strong>设备交互边界</strong>——<code>dev.run()</code> 可能因为网络超时、连接断开、权限拒绝而抛出任意异常。捕获它们并转成"这条探测失败，跳过"是合理的。</p>
+<p><strong>但有两处不该捕获</strong>：</p>
+<ol class="check"><li><code>ads.py:255-256</code> <code>clean_ad_cache</code> 里的 <code>pm clear</code> —— 失败了应该让用户知道，而不是记成一行 <code>ERROR: {e}</code> 混进结果字典</li><li><code>cli.py:199-201</code> <code>cmd_scan</code> 里的 logcat 抓取 —— 已经正确地 <code>print</code> 了警告，这处是<strong>典范写法</strong></li></ol>
+<p><strong>建议</strong>：不要全局 <code>except Exception</code> 放行，而是逐条加 <code># noqa: BLE001</code> 并注明为什么，或在 <code>ads.py</code> 引入一个窄的 <code>DeviceError</code> 类型。<strong>关键是让每个捕获点都留下理由。</strong></p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s6"><h2><span class="sec-no">6</span>五、循环依赖与依赖方向</h2>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">text</span></div><pre><code data-lang="text">cli.py     → ads.py, packages.py, profiles.py, adb.py
+packages.py → adb.py
+ads.py     → adb.py
+profiles.py → (无内部依赖)
+adb.py     → (无内部依赖)</code></pre></div>
+<p><strong>无环。</strong> 4 个顶层模块的依赖图是一棵有根树，深度 2。</p>
+<p>唯一的轻微反模式：<code>cli.py:33</code> 同时导入了 <code>ProfileError</code> 和 <code>list_profiles/load_profile/profile_table</code> 三个符号——<code>list_profiles</code> 与 <code>load_profile</code> 只在 <code>cli.py</code> 用，<code>profile_table</code> 也是。这不算越界，但 <code>cli.py</code> 承担了"应用层该知道所有领域层 API"的正常职责。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s7"><h2><span class="sec-no">7</span>六、P0 / P1 / P2 改造清单</h2>
+<h3>P0 · 正确性 / 承诺一致性（必须做）</h3>
+<table><thead><tr><th>#</th><th>事项</th><th>位置</th><th>影响面</th><th>成本</th></tr></thead><tbody><tr><td>1</td><td><strong><code>set_ad_settings</code> 补原值快照</strong> —— 写前读原值落盘，<code>restore</code> 时还原</td><td><code>ads.py:217-228</code></td><td>破坏项目"只做可逆操作"的核心承诺。用户在 <code>adswitch --set</code> 改 4 个开关后无法回退</td><td>~30 行</td></tr><tr><td>2</td><td>**<code>rm -rf {d}/*</code> 的路径校验** —— 要求路径以 <code>/sdcard/</code> 开头且不含 <code>..</code></td><td><code>ads.py:263</code></td><td><code>--dir</code> 传错参数可能删掉非预期目录。这是全项目唯一的递归删除</td><td>~10 行</td></tr><tr><td>3</td><td><strong><code>_parse_pem_rsa</code> 加单测</strong> —— 用已知测试密钥 PEM 验证 n/d/e 解析</td><td><code>adb.py:151-184</code></td><td>唯一手写密码学代码，CI 从不执行（CI 未装 cryptography）。解析错表现为"AUTH 无限循环"</td><td>~20 行</td></tr></tbody></table>
+<h3>P1 · 可维护性阻塞（应该做）</h3>
+<table><thead><tr><th>#</th><th>事项</th><th>位置</th><th>影响面</th><th>成本</th></tr></thead><tbody><tr><td>4</td><td><strong>CI 接入 <code>ruff check</code></strong></td><td><code>.github/workflows/test.yml</code></td><td>49 条告警一次性暴露，10 条可自动修。成本几乎为零，收益是所有后续改动自动被卡住</td><td>5 行</td></tr><tr><td>5</td><td><strong>拆分 <code>cmd_doctor</code>（CC 17）</strong></td><td><code>cli.py:131-178</code></td><td>唯一 C 级函数。且内层循环重复调 <code>list_packages</code>（<code>cli.py:152-153</code>），多画像时性能线性劣化</td><td>~40 行</td></tr><tr><td>6</td><td><strong>合并两个测试文件的覆盖率统计</strong></td><td><code>tests/</code></td><td>真实覆盖率被低估（<code>adb.py</code> 19% 严重偏低），掩盖了协议层其实有测试的事实</td><td>~10 行</td></tr><tr><td>7</td><td><strong><code>cmd_debloat</code>（CC 11）与 <code>disable_packages</code>（CC 14）拆分</strong></td><td><code>cli.py:292</code> <code>packages.py:158</code></td><td>两个 C 级函数。拆分时<strong>必须保持"判定→落盘→执行"的顺序不变</strong></td><td>~40 行</td></tr><tr><td>8</td><td><strong><code>profile.json</code> 加未知字段告警</strong></td><td><code>profiles.py:41-57</code></td><td>画像写错字段名会静默取默认值（如把 <code>model</code> 写成 <code>models</code>），贡献者看不到任何提示</td><td>~15 行</td></tr><tr><td>9</td><td><strong><code>work/</code> 快照过期清理</strong></td><td><code>cli.py:367-370</code></td><td><code>restore</code> 自动取"最新" <code>state-*.json</code>，多机型/多次操作会取错</td><td>~20 行</td></tr></tbody></table>
+<h3>P2 · 整洁度（有余力做）</h3>
+<table><thead><tr><th>#</th><th>事项</th><th>位置</th><th>影响面</th></tr></thead><tbody><tr><td>10</td><td><code>ruff check --fix</code> 清掉 10 条可自动修的（未使用 import、import 排序等）</td><td>测试代码为主</td><td>低</td></tr><tr><td>11</td><td><code>ads.py:80-86</code> <code>summary()</code> 补"另有 N 个未分类域名未加入清单"</td><td><code>ads.py</code></td><td>让 <code>other</code> 盲区可见</td></tr><tr><td>12</td><td>18 处 <code>except Exception</code> 逐条加理由注释或 <code># noqa</code></td><td>全项目</td><td>提升可读性，不改行为</td></tr><tr><td>13</td><td><code>ads.py</code> 的 <code>AD_HINTS</code> / <code>SOURCE_HINTS</code> 移到独立数据文件</td><td><code>ads.py:43-58</code></td><td>让贡献者能改分类规则而不动代码</td></tr><tr><td>14</td><td><code>mitvclean/__init__.py</code> 补 <code>__version__</code></td><td><code>mitvclean/__init__.py</code></td><td>目前版本号只在 <code>pyproject.toml</code>，<code>--version</code> 无法实现</td></tr><tr><td>15</td><td>协议结论补"适用固件范围"标注</td><td><code>docs/ADB协议实现笔记.md</code></td><td>4 处偏差只在 1 台电视 1 个固件验证过</td></tr></tbody></table>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s8"><h2><span class="sec-no">8</span>七、复核命令</h2>
+<p>本次全部指标可用以下命令复现（需 <code>radon</code> / <code>ruff</code> / <code>coverage</code>）：</p>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">bash</span></div><pre><code data-lang="bash"># 复杂度
+radon cc mitvclean tests -s -a
+radon raw mitvclean -s
+
+# 静态检查
+ruff check mitvclean tests --output-format concise
+ruff check mitvclean tests --fix        # 10 条可自动修
+
+# 覆盖率
+coverage run --source=mitvclean -m tests.test_offline
+coverage report -m
+
+# 协议层覆盖率（补上）
+coverage run --source=mitvclean -m tests.test_adb_protocol
+coverage combine
+coverage report -m
+
+# 测试
+python tests/test_offline.py
+python tests/test_adb_protocol.py</code></pre></div>
+<p><strong>采集日期：2026-10-21。</strong> 工具版本：radon 6.0.1、ruff（隔离 venv 最新版）、coverage（隔离 venv 最新版）。 工具运行于 <code>C:/Users/jiang/.workbuddy/binaries/python/envs/default/</code>，未污染用户全局环境。</p>
+      <footer style="margin-top:70px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>mitvclean · 代码质量 · 生成于 analysis/mitvclean代码质量评估.md</span>
+        <span><a href="mitvclean架构实现分析.html">架构实现分析</a> · <a href="mitvclean基础层与领域模型演化分析.html">演化分析</a> · <a href="mitvclean第一性原理与设计巧思分析.html">第一性原理与巧思</a> · <a href="mitvclean代码质量评估.html">代码质量评估</a> · <a href="mitvclean技术栈拆解.html">技术栈拆解</a></span>
+      </footer>
+    </div>
+  </main>
+</div>
+<script>
+
+/* ---------- 目录生成 + scrollspy ---------- */
+(function(){
+  var nav = document.getElementById('tocNav');
+  var sections = document.querySelectorAll('section[id]');
+  var html = '<div class="toc-label">目录</div>';
+  sections.forEach(function(s){
+    var no = s.querySelector('.sec-no');
+    var t = s.querySelector('h2');
+    if(!t) return;
+    var label = (no ? no.textContent + ' · ' : '') + t.textContent.replace(no ? no.textContent : '', '').trim();
+    html += '<a href="#' + s.id + '" data-target="' + s.id + '">' + label + '</a>';
+    s.querySelectorAll('h3').forEach(function(h3){
+      var id = s.id + '-' + h3.textContent.replace(/\s+/g,'').slice(0,8);
+      h3.id = id;
+      html += '<a class="l2" href="#' + id + '" data-target="' + id + '">' + h3.textContent + '</a>';
+    });
+  });
+  nav.innerHTML = html;
+  var links = nav.querySelectorAll('a');
+  var map = {};
+  links.forEach(function(a){ map[a.dataset.target] = a; });
+  var targets = [];
+  document.querySelectorAll('h2[id],h3[id],section[id]').forEach(function(el){ if(el.id) targets.push(el); });
+  window.addEventListener('scroll', function(){
+    var pos = window.scrollY + 90, current = null;
+    for(var i=0;i<targets.length;i++){
+      if(targets[i].offsetTop <= pos) current = targets[i];
+    }
+    links.forEach(function(a){ a.classList.remove('active'); });
+    if(current && map[current.id]) map[current.id].classList.add('active');
+  }, {passive:true});
+})();
+
+/* ---------- 巧思卡展开 ---------- */
+(function(){
+  document.querySelectorAll('.cv .cv-h').forEach(function(header){
+    header.addEventListener('click', function(){
+      header.parentElement.classList.toggle('open');
+    });
+  });
+})();
+
+/* ---------- 轻量代码高亮（Python / YAML） ---------- */
+(function(){
+  var KEYWORDS = new Set(("def class return import from if elif else for in not and or raise with try except lambda "+
+    "yield pass break continue global nonlocal del assert async await is None True False self super").split(' '));
+  var YAML_KEYS = new Set(("schema name version description objects relations functions actions properties type required "+
+    "from to ref runtime implementation model property_definitions object_types relation_types interaction_policies "+
+    "presentation_tools available_on context_input requires confirmation handler icon inputs effects summary params "+
+    "status details role code amount period date datetime string number boolean json money open mutable source "+
+    "id_field config database kind display_name type_policy mutability data_source instructions acyclic from_types "+
+    "to_types default message create_object update_object delete_object create_relation update_relation delete_relation").split(' '));
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function colorize(code, lang){
+    var out = '', i = 0, n = code.length;
+    var isYaml = lang === 'yaml';
+    while(i < n){
+      var c = code[i];
+      if(c === '#' && (i === 0 || code[i-1] === '\n')){
+        var j = code.indexOf('\n', i); if(j === -1) j = n;
+        out += '<span class="tok-c">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(c === '"' || c === "'"){
+        var q = c, j = i + 1;
+        while(j < n){ if(code[j] === q){ j++; break; } if(code[j] === '\\') j++; j++; }
+        out += '<span class="tok-s">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[0-9]/.test(c) || (c === '-' && /[0-9]/.test(code[i+1]||''))){
+        var j = i; while(j < n && /[0-9.\-]/.test(code[j])) j++;
+        out += '<span class="tok-n">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[A-Za-z_\u4e00-\u9fa5]/.test(c)){
+        var j = i; while(j < n && /[A-Za-z0-9_\u4e00-\u9fa5]/.test(code[j])) j++;
+        var word = code.slice(i, j);
+        var next = code[j] || '';
+        if(isYaml && next === ':' && YAML_KEYS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(!isYaml && KEYWORDS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(/^[A-Z]/.test(word)) out += '<span class="tok-f">' + esc(word) + '</span>';
+        else out += esc(word);
+        i = j; continue;
+      }
+      if(c === '(' || c === ')' || c === '[' || c === ']' || c === '{' || c === '}'){
+        out += '<span class="tok-p">' + c + '</span>'; i++; continue;
+      }
+      out += esc(c); i++;
+    }
+    return out;
+  }
+  document.querySelectorAll('pre code[data-lang]').forEach(function(el){
+    el.innerHTML = colorize(el.textContent, el.dataset.lang);
+  });
+})();
+
+</script>
+</body>
+</html>

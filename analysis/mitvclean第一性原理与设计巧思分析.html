@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mitvclean · 第一性原理 · 设计巧思</title>
+<style>
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --surface-subtle:#f7f8f7;
+  --ink:#17201c; --muted:#68736d; --line:#dfe4e1; --line-strong:#cbd3ce;
+  --green:#156b4a; --green-dark:#0e5238; --green-soft:#e7f2ec;
+  --red:#b83b35; --red-soft:#f8e9e7; --amber:#9a6418; --amber-soft:#f8eedc;
+  --blue:#356a91; --blue-soft:#e7eff5;
+  --code-bg:#0f1a16; --code-ink:#d9e6df;
+  --mono:ui-monospace,SFMono-Regular,"Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink); background:var(--bg);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;line-height:1.7;font-size:15px}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+/* ---------- 侧边 TOC ---------- */
+.toc{position:sticky;top:0;height:100vh;overflow-y:auto;background:#17231e;color:#edf4f0;padding:22px 16px;border-right:1px solid #25362e}
+.toc .brand{display:flex;align-items:center;gap:11px;padding:0 6px 22px}
+.toc .brand-mark{display:grid;place-items:center;width:38px;height:38px;background:#e7f2ec;color:var(--green-dark);font-weight:800;border-radius:8px;font-size:12px;letter-spacing:.5px}
+.toc .brand strong{display:block;font-size:14px}
+.toc .brand span{display:block;margin-top:2px;color:#97a89f;font-size:11px}
+.toc nav{display:grid;gap:2px}
+.toc a{display:block;padding:7px 10px;border-radius:6px;color:#aebdb5;font-size:13px;border-left:2px solid transparent;transition:.15s}
+.toc a:hover{color:#fff;background:rgba(255,255,255,.06);text-decoration:none}
+.toc a.active{color:#fff;background:#274337;border-left-color:#4fbf8d}
+.toc a.l2{padding-left:24px;font-size:12.5px;color:#8fa29a}
+.toc .toc-label{padding:14px 10px 6px;font-size:10.5px;letter-spacing:1.5px;color:#6f8379;text-transform:uppercase}
+main{min-width:0}
+/* ---------- Hero ---------- */
+.hero{background:linear-gradient(135deg,#0e5238 0%,#14573f 45%,#1d3b30 100%);color:#edf4f0;padding:56px 0 44px}
+.hero .wrap{max-width:940px;margin:0 auto;padding:0 32px}
+.hero .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:2px;color:#9dcdb6;text-transform:uppercase;font-weight:600}
+.hero .kicker::before{content:"";width:26px;height:2px;background:#4fbf8d}
+.hero h1{margin:14px 0 10px;font-size:32px;line-height:1.25}
+.hero p{margin:0;color:#b9c9c1;max-width:74ch;font-size:15px}
+.hero .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.hero .chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);padding:6px 12px;border-radius:999px;font-size:12px;color:#d8e5de}
+.hero .chip b{color:#fff;font-weight:600}
+.hero .conclusion{margin-top:24px;padding:16px 18px;border-radius:10px;background:rgba(255,255,255,.07);border-left:3px solid #4fbf8d;font-size:14px;color:#cfe0d7}
+/* ---------- 正文 ---------- */
+.content{max-width:940px;margin:0 auto;padding:48px 32px 90px}
+section{margin-top:52px}
+section:first-child{margin-top:0}
+h2{font-size:24px;margin:0 0 6px;display:flex;align-items:center;gap:12px}
+h2 .sec-no{font-size:13px;font-weight:700;color:#fff;background:var(--green);width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none}
+h3{font-size:17.5px;margin:34px 0 10px;color:#14352a}
+h4{font-size:15px;margin:22px 0 8px;color:#0e5238}
+p{margin:10px 0;color:#2c3731}
+.lead{border-left:3px solid var(--green);padding:10px 16px;background:var(--green-soft);border-radius:0 8px 8px 0;font-size:14.5px;color:#173b2d;margin:14px 0}
+/* ---------- 代码框 ---------- */
+.codebox{margin:16px 0;border-radius:10px;overflow:hidden;border:1px solid #1c2d25;background:var(--code-bg);box-shadow:0 6px 18px rgba(20,40,32,.12)}
+.codebox .bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#14221c;border-bottom:1px solid #22352c;color:#7f9a8e;font-size:11.5px}
+.codebox .bar .dot{width:9px;height:9px;border-radius:50%}
+.codebox .bar .dot:nth-child(1){background:#f0635c}.codebox .bar .dot:nth-child(2){background:#e2b25c}.codebox .bar .dot:nth-child(3){background:#5fc98a}
+.codebox .bar .fname{margin-left:6px;font-family:var(--mono);color:#9fb6ab}
+.codebox pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.65;color:var(--code-ink)}
+.codebox pre code{font-family:inherit;background:none;color:inherit;padding:0}
+.tok-c{color:#6d8a7e;font-style:italic}
+.tok-s{color:#e6c97a}
+.tok-k{color:#7fd6a8;font-weight:600}
+.tok-n{color:#86c5e8}
+.tok-f{color:#d9a7f0}
+.tok-p{color:#c88fd8}
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.06)}
+th{background:#eef3f0;color:#24402f;text-align:left;padding:10px 14px;font-size:12.5px;letter-spacing:.3px;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code,li code,p code{font-family:var(--mono);font-size:12px;background:#e9efec;border:1px solid #dbe2de;border-radius:5px;padding:1.5px 6px;color:#0e5238}
+/* ---------- 卡片 / Callout ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.card h4{margin:0 0 8px}
+.card p{margin:6px 0;font-size:13.5px}
+.card .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.callout{border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.info{background:var(--blue-soft);border-color:#c9dbe8;color:#234a66}
+.callout.warn{background:var(--amber-soft);border-color:#e8d9b8;color:#6d4712}
+.callout.ok{background:var(--green-soft);border-color:#c4e0d1;color:#14543a}
+.callout.red{background:var(--red-soft);border-color:#ecc9c6;color:#7c2b27}
+.callout .t{font-weight:700;display:block;margin-bottom:4px}
+/* ---------- 分层图 ---------- */
+.layers{display:grid;gap:0;margin:20px 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:var(--surface)}
+.layer{padding:16px 20px;border-top:1px solid var(--line)}
+.layer:first-child{border-top:none}
+.layer .lname{font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px}
+.layer .lname .badge{font-size:10.5px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:6px}
+.layer .ldesc{font-size:13px;color:var(--muted);margin-top:4px}
+.layer .lfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.layer .lfiles span{font-family:var(--mono);font-size:11.5px;background:#f0f3f1;border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:#33453c}
+.l-base{background:#e7f2ec}.l-domain{background:#fff}.l-agent{background:#e7eff5}
+.badge-base{background:#c4e0d1;color:#14543a}.badge-domain{background:#e8d9b8;color:#6d4712}.badge-agent{background:#c9dbe8;color:#234a66}
+/* ---------- 流程图 ---------- */
+.flow{display:grid;gap:10px;margin:18px 0}
+.flow .step{display:grid;grid-template-columns:46px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.flow .idx{width:46px;height:46px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:16px;color:#fff}
+.flow .step .st{font-weight:700;font-size:14px}
+.flow .step .sd{font-size:12.8px;color:var(--muted)}
+.flow .side{font-family:var(--mono);font-size:11px;color:#3f5249;background:#eef2ef;border-radius:7px;padding:4px 9px;white-space:nowrap}
+.flow .join{text-align:center;color:var(--green);font-weight:700;font-size:13px;letter-spacing:3px}
+/* ---------- 时间线 ---------- */
+.master-tl{position:relative;margin:24px 0;padding-left:34px}
+.master-tl::before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:3px;background:linear-gradient(#156b4a,#356a91)}
+.master-tl .mt{position:relative;margin:0 0 14px}
+.master-tl .mt .dot{position:absolute;left:-32px;top:8px;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--green)}
+.master-tl .mt .ph{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.master-tl .mt .ph .badge{font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:6px}
+.master-tl .mt .ph .date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.master-tl .mt .ph .commit{font-family:var(--mono);font-size:11.5px;color:#4a5c53;background:#eef2ef;border-radius:6px;padding:2px 8px}
+.master-tl .mt .ph .title{font-weight:700;font-size:15px}
+.master-tl .mt .desc{font-size:13px;color:#3a4a42;margin-top:3px}
+.b-a{background:#e7f2ec;color:#14543a}.b-b{background:#dcefe4;color:#14543a}.b-c{background:#f8eedc;color:#6d4712}
+.b-d{background:#f3e8c9;color:#6d4712}.b-e{background:#e7eff5;color:#234a66}.b-f{background:#e8d9b8;color:#6d4712}
+.b-g{background:#c9dbe8;color:#234a66}.b-h{background:#d9c9e8;color:#4a2a66}
+/* ---------- 巧思可折叠卡 ---------- */
+.clever{display:grid;gap:14px;margin:14px 0}
+.cv{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.cv .cv-h{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:13px 18px;background:#fafbfa;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.cv .cv-n{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff}
+.cv .cv-t{font-weight:800;font-size:14.5px;line-height:1.4}
+.cv .cv-f{font-family:var(--mono);font-size:11px;color:var(--muted);background:#eef2ef;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.cv .cv-b{display:none;padding:6px 18px 16px}
+.cv.open .cv-b{display:block}
+.cv .cv-b p{font-size:13.6px;color:#33423b}
+.cv .cv-b .why{margin-top:10px;padding:10px 14px;border-radius:9px;background:var(--green-soft);border-left:3px solid var(--green);font-size:13px;color:#173b2d}
+.cv .toggle{color:var(--muted);font-size:18px;transition:.2s}
+.cv.open .toggle{transform:rotate(45deg)}
+/* ---------- 双栏 / 列表 / 响应式 ---------- */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.check li{margin:6px 0;list-style:none;padding-left:28px;position:relative}
+.check li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--green);font-weight:800}
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .toc{display:none}
+  .hero h1{font-size:25px}
+  .dual{grid-template-columns:1fr}
+  .cv .cv-h{grid-template-columns:40px 1fr}
+  .cv .cv-f{display:none}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc">
+    <div class="brand">
+      <div class="brand-mark">mitv</div>
+      <div><strong>第一性原理 · 设计巧思</strong><span>mitvclean 深度解构</span></div>
+    </div>
+    <nav id="tocNav"></nav>
+  </aside>
+  <main>
+    <header class="hero">
+      <div class="wrap">
+        <div class="kicker">OpenSource-X · 第一性原理 · 设计巧思</div>
+        <h1>mitvclean · 第一性原理 · 设计巧思</h1>
+        <p>为谁解决什么不可回避的问题，哪些设计是必然的</p>
+        <div class="meta">
+          <span class="chip">分析对象 <b>mitvclean</b></span>
+          <span class="chip">版本 <b>b277c37</b></span>
+          <span class="chip">数据来源 <b>本地仓库直读</b></span>
+          <span class="chip">日期 <b>2026-10-21</b></span>
+        </div>
+        <div class="conclusion"><b>结论先行：</b>见正文第一节「结论」，每条结论均可回溯到具体文件路径与行号。</div>
+      </div>
+    </header>
+    <div class="content">
+<h3>mitvclean 第一性原理与设计巧思分析</h3>
+<ul class="check"><li><strong>分析对象</strong>：<code>mitvclean</code></li><li><strong>数据来源</strong>：本地仓库源码直读（26 个文件、5 次提交）</li><li><strong>分析日期</strong>：2026-10-21</li><li><strong>分析角度</strong>：角度三（第一性原理）+ 角度四（设计巧思深挖）</li></ul>
+<section id="s1"><h2><span class="sec-no">1</span>结论</h2>
+<p><strong>根本问题</strong>：让一个只有 2GB 内存、被厂商塞满后台的安卓电视，在<strong>不卸载任何东西、不变砖、不失去还原能力</strong>的前提下，恢复到可用的响应速度，并且把服务端动态下发的广告掐断。</p>
+<p>拆成不可再分的基本事实只有三条：</p>
+<table><thead><tr><th>#</th><th>基本事实</th><th>推翻了什么表面答案</th></tr></thead><tbody><tr><td>F1</td><td><strong>电视没有 root，且厂商在持续对抗</strong> —— adbd 是黑盒、固件锁死属性、组件级禁用被 SecurityException 拒绝</td><td>"禁包"是万能答案 —— 实测贴片广告在 <code>com.mitv.tvhome</code> 里，禁整包=进不去桌面，禁组件=被固件拒绝</td></tr><tr><td>F2</td><td><strong>广告地址是服务端下发的，不是编译期常量</strong></td><td>"扒 APK 拿到域名清单" —— APK 里只有 <code>film_ad_online_server</code> 这个<strong>键名</strong>，值在服务端</td></tr><tr><td>F3</td><td><strong>用户要的是"可回退"，不是"干净"</strong></td><td>"去广告工具应该删干净" —— 删了就回不去了，用户不敢用</td></tr></tbody></table>
+<p>13 项设计巧思全部能回溯到这三条事实。其中最值得讲的三项是：</p>
+<ol class="check"><li><strong>状态快照先于动手</strong>（<code>packages.py:122-144</code>）—— F3 的直接产物，把"可回退"从承诺变成机制</li><li><strong>两条腿取域名</strong>（<code>ads.py:99-140</code>）—— F2 的直接产物，用"并集"代替"择一"</li><li><strong>包名白名单正则</strong>（<code>packages.py:23</code>）—— F1 的衍生，因为清单是外部输入且会被拼进 shell 命令</li></ol>
+<p><strong>代价也是真金白银的</strong>：手写 DER 解析 100 行（为了零依赖）、CLI 层 CC 17 的一坨函数（为了少写抽象）、以及最刺眼的——<strong><code>adswitch</code> 写操作不记录原值，破坏了 F3 自己建立的闭环</strong>。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s2"><h2><span class="sec-no">2</span>一、基本事实</h2>
+<h3>F1 · 电视没有 root，厂商在持续对抗</h3>
+<p><strong>不可再分的事实</strong>：</p>
+<ol class="check"><li>shell 权限只到 <code>pm disable-user --user 0</code>，没有 root</li><li>固件可以拒绝 shell 改组件状态</li><li>adbd 的协议行为是厂商自定义的，黑盒</li></ol>
+<p><strong>推翻了什么</strong>： "去广告 = 禁包"是表面答案。实测三路都被堵死：</p>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">text</span></div><pre><code data-lang="text">$ adb shell pm disable --user 0 com.mitv.tvhome/.PreDetailsActivity
+SecurityException: Shell cannot change component state for
+  com.mitv.tvhome/com.mitv.tvhome.PreDetailsActivity to 2</code></pre></div>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">text</span></div><pre><code data-lang="text">$ adb shell getprop persist.bootvideo.bootanim     # 属性不存在
+$ adb shell setprop service.bootvideo 0            # 只读，失败</code></pre></div>
+<p>而 <code>com.mitv.tvhome</code> 装在 <code>/data/app/</code> 而非 <code>/system/</code>——这台机器被第三方精简版刷过，桌面和广告组件纠缠在同一个包里，禁整包就是删桌面。</p>
+<p><strong>必然的设计</strong>：</p>
+<ul class="check"><li>只能做<strong>可逆</strong>操作（禁用而非卸载）</li><li>必须绕开组件层，走 DNS 层</li><li>协议层必须自研且经过实测校准</li></ul>
+<h3>F2 · 广告地址是服务端下发的</h3>
+<p><strong>不可再分的事实</strong>：APK 里保存的是<strong>配置键名</strong>，值由服务端在运行时下发。</p>
+<p><strong>推翻了什么</strong>： "静态扒 APK 就能拿到广告域名清单" —— 只静态扫出来的是<strong>硬编码域名</strong>，不是真实广告通道。</p>
+<p>扒 APK 能看到的是键名和模块名：</p>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">text</span></div><pre><code data-lang="text">com.mitv.tvhome.ads.filmad.FilmAdBean
+com.mitv.tvhome.util.InternalFrontAdCtlManager   →  fetchMiFrontAdConfig
+close_after_ad_video_interval_cnt                ← 广告时长计数器
+film_ad_online_server                              ← 只有键名，值在服务端</code></pre></div>
+<p><code>film_ad_online_server</code> 的值只在 logcat 里出现过。实测抓到的 <code>cp-ppvideo.cdn.ptmi.gitv.tv</code> 这类 <code>cp-</code> 前缀的 CDN 域名，<strong>静态扫 APK 根本找不到</strong>。</p>
+<p><strong>必然的设计</strong>：</p>
+<ul class="check"><li>必须有动态腿（logcat）</li><li>动态腿要有触发条件——所以要"两条腿交叉"</li><li>提取器必须宽松（宁可多收），分类器再分流</li></ul>
+<h3>F3 · 用户要的是"可回退"，不是"干净"</h3>
+<p><strong>不可再分的事实</strong>：这个工具的操作对象是别人的家用电器。用户不会读代码，但一定会看说明书。<strong>一旦出事，责任在工具。</strong></p>
+<p><strong>推翻了什么</strong>： "去广告工具应该删干净" —— 删了就回不去了，用户不敢用，工具就没人用。</p>
+<p><strong>必然的设计</strong>：</p>
+<ul class="check"><li>状态快照先于动手</li><li>还原只恢复"原本就是 enabled 的"，不动用户自己关掉的</li><li>桌面 / 系统设置 / 平台输入服务绝不碰</li><li>包名必须校验，防止清单被当 shell 执行</li></ul>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s3"><h2><span class="sec-no">3</span>二、设计巧思全景</h2>
+<p>按层组织，共 13 项，覆盖 4 层。</p>
+<h3>层 1 · 协议层（<code>mitvclean/adb.py</code>）</h3>
+<h4>巧思 1 · AUTH 签名末尾放 token 本身，而非摘要</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:121-125
+digest_info = bytes.fromhex("3021300906052b0e03021a05000414")
+pad_len = k - 3 - len(digest_info) - len(data)
+if pad_len &lt; 8:
+    raise AdbError("token 太长，无法用 RSA 填充签名")
+em = b"\x00\x01" + b"\xff" * pad_len + b"\x00" + digest_info + data
+return pow(int.from_bytes(em, "big"), d, n).to_bytes(k, "big")</code></pre></div>
+<p><strong>做什么</strong>：用 PKCS#1 type 1 填充 + 15 字节 SHA-1 DigestInfo 前缀 + <strong>原始 token</strong>，而不是标准 PKCS#1 v1.5 签名。</p>
+<p><strong>为什么必然</strong>：adbd 用 <code>RSA_public_decrypt</code> 验签后，<strong>把解出的明文和 token 逐字节比较</strong>——它不验证摘要。所以末尾必须是 token 原文。这是 F1（黑盒协议）逼出来的：照文档写会无限循环 AUTH。</p>
+<h4>巧思 2 · shell v2 长度字段按小端解析</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:447
+length = struct.unpack("&lt;I", payload[i + 1:i + 5])[0]</code></pre></div>
+<p><strong>为什么必然</strong>：shell v2 的帧是 <code>1 字节类型 + 4 字节长度 + 数据</code>，而长度是<strong>小端</strong>。按大端读会得到 83886080 这种荒谬值。docstring 里专门留了一行警告："按大端读会得到 83886080 这种荒谬的值"。</p>
+<h4>巧思 3 · stderr 帧单独收集，不混进结果</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:451-455
+if kind == 0x01:      # stdout
+    result += data
+elif kind == 0x03:    # stderr
+    err += data
+# 0x02 (stdin EOF) / 0x04 (exit code) 忽略</code></pre></div>
+<p><strong>为什么必然</strong>：<code>dev.run()</code> 的返回值被上层当成"命令的纯输出"用来解析（如 <code>pm list packages</code>、<code>getprop</code>）。stderr 混进去会让解析静默出错。而且 <code>pm disable-user</code> 失败时信息恰恰在 stderr——所以 <code>last_stderr</code> 必须留着但不能污染 stdout。</p>
+<h4>巧思 4 · 设备 quirk 下沉为协议层通用契约</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:392-404
+def run(self, command: str, read_timeout: float = 60.0) -&gt; str:
+    try:
+        return self.shell(command, read_timeout)
+    except AdbError:
+        self.close()
+        self.connect()
+        return self.shell(command, read_timeout)</code></pre></div>
+<p><strong>为什么必然</strong>：小米 adbd 同一连接连续开第二个流会被 CLSE。这是 F1 的直接产物。关键在于<strong>下沉</strong>——<code>cli.py</code> 里 20 多处 <code>dev.run()</code> 调用一行都不用改。设备 quirk 被封装在协议层，领域层完全无感。</p>
+<h4>巧思 5 · 主协议与 sync 子协议严格分离</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:219-224
+if cmd == A_SYNC:
+    if magic != 0xFFFFFFFF:
+        raise AdbError(f"sync 包 magic 不对：{magic:#x}")
+elif magic != (cmd ^ 0xFFFFFFFF):
+    raise AdbError(f"adb 包校验失败：cmd={cmd:#x} magic={magic:#x}")</code></pre></div>
+<p><strong>为什么必然</strong>：主协议 24 字节小端二进制头、magic 随 command 变化；sync 子协议 8 字节 ASCII 头、magic 固定 0xFFFFFFFF。初版把两者混用，症状是"shell 能通但 pull 超时"——因为恰好错在数据流的另一端。</p>
+<h4>巧思 6 · 手写 DER 解析，放弃 100 行代码换零依赖</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># adb.py:151-184
+def _parse_pem_rsa(text: str):
+    """从 PEM 文本解析 RSA 的 n/d/e。"""
+    ...
+    if der[0] != 0x30:
+        raise ValueError("期望 SEQUENCE")</code></pre></div>
+<p><strong>为什么必然</strong>：签名需要 RSA 私钥的 (n, d, e)。标准做法是 <code>pip install cryptography</code>——但那会打破"零第三方依赖"这条 F1 派生出的核心承诺。所以选择手写 100 行 DER 解析，代价是这块代码没有第三方库的测试覆盖（覆盖率报告里 <code>adb.py:153-184</code> 全红）。</p>
+<p><strong>妥协点</strong>：<code>cryptography</code> 仍作为<strong>可选依赖</strong>存在（<code>pyproject.toml</code> <code>[project.optional-dependencies] crypto</code>），有则用它、无则手写。</p>
+<h3>层 2 · 领域层 · 包管理（<code>mitvclean/packages.py</code>）</h3>
+<h4>巧思 7 · 包名白名单正则——把清单当不可信输入</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># packages.py:23
+PACKAGE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$")
+
+# packages.py:60-65
+def validate_package(name: str) -&gt; str:
+    """校验包名合法性。非法直接抛错——这是防止清单注入的关键一道闸。"""
+    name = name.strip()
+    if not PACKAGE_RE.fullmatch(name):
+        raise PackageError(f"不是合法的包名，拒绝执行：{name!r}")
+    return name</code></pre></div>
+<p><strong>为什么必然</strong>：包名最终被拼进 <code>pm disable-user --user 0 {n}</code>。清单文件来自仓库、来自用户提交、来自未来的 PR——<strong>是不可信输入</strong>。正则要求至少两段、只允许字母数字下划线和点，<code>:</code>、<code>;</code>、<code>$</code>、空格全部拒绝。这是 F1 + F3 的共同产物。</p>
+<h4>巧思 8 · 状态快照先于动手</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># packages.py:184-185
+# 先落盘，再动手
+result.record_path = save_record(dev, valid, state, record_dir, tag)</code></pre></div>
+<p><strong>为什么必然</strong>：F3 的字面实现。如果先禁用再记录，中途断电就永远不知道原来哪些包是开着的。顺序不可交换。</p>
+<h4>巧思 9 · 还原只恢复"原本 enabled"的</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># packages.py:213
+to_enable = [n for n, s in states.items() if s == STATE_ENABLED]</code></pre></div>
+<p><strong>为什么必然</strong>：用户自己关掉的包（可能是为了省电、可能是不喜欢），工具不该替他打开。快照里记录的是<strong>三态</strong>（<code>enabled</code> / <code>disabled</code> / <code>absent</code>）而不是布尔值，正是为了区分"用户关的"和"工具关的"。</p>
+<p><strong>验证</strong>：<code>tests/test_offline.py::test_restore_only_reenables_what_was_enabled</code> 专门测这一条。</p>
+<h4>巧思 10 · 原子写：先 <code>.tmp</code> 再 <code>replace()</code></h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># packages.py:141-143
+tmp = path.with_suffix(".json.tmp")
+tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+tmp.replace(path)  # 原子替换，避免半截文件</code></pre></div>
+<p><strong>为什么必然</strong>：快照文件是"可回退"的唯一凭据。写一半的 JSON 会让 <code>load_record</code> 直接抛 <code>PackageError</code>，用户就再也回不去了。<code>Path.replace()</code> 在同一文件系统内是原子的。</p>
+<h4>巧思 11 · 逐条下发命令，不用分号链式</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># packages.py:187-190
+for n in targets:
+    try:
+        out = dev.run(f"pm disable-user --user 0 {n}").strip()</code></pre></div>
+<p><strong>为什么必然</strong>：注释写明"部分国产 ROM 的 shell 会吞掉分号后的语句"。链式 <code>a; b; c</code> 在某些 ROM 上只执行第一条且不报错——<strong>静默的半执行</strong>比报错更可怕。逐条下发还能精确定位哪个包失败了。</p>
+<h3>层 3 · 领域层 · 广告处理（<code>mitvclean/ads.py</code>）</h3>
+<h4>巧思 12 · 两条腿取域名，用并集不用择一</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># cli.py:222
+for d in report.from_dex.keys() | log_doms:
+    kind = ads.classify(d)</code></pre></div>
+<p><strong>为什么必然</strong>：F2 的直接产物。静态腿能拿到硬编码域名但拿不到服务端下发的；动态腿能拿到真实通道但只在特定功能触发后才有。<strong>任一单独使用都会漏</strong>。用集合并集，并单独记录 <code>from_dex</code> / <code>from_logcat</code> 两个来源标记（<code>ads.py:68-69</code>），让使用者知道每条域名的出处。</p>
+<h4>巧思 13 · 提取器宽松、分类器严格——两段式</h4>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># ads.py:33-37  提取器：宁多勿漏
+DOMAIN_RE = re.compile(
+    rb"[a-z0-9][a-z0-9-]{1,40}(?:\.[a-z0-9-]{1,30}){1,5}"
+    rb"\.(?:xiaomi|com|cn|net|tv|org|io|me)"
+    rb"\.(?:com|cn|net|tv|org|io|me)"
+)
+
+# ads.py:89-96  分类器：按已知特征分流
+def classify(domain: str) -&gt; str:
+    low = domain.lower()
+    if any(h in low for h in AD_HINTS):
+        return "ad"
+    if any(h in low for h in SOURCE_HINTS):
+        return "source"
+    return "other"</code></pre></div>
+<p><strong>为什么必然</strong>：域名在运行时才知道，事先无法穷举。提取阶段用"宽正则"尽量多收（甚至收进 <code>other</code>），分类阶段用已知特征表分流。<strong>关键在于把"不确定"显式化</strong>——<code>other</code> 这一档存在本身就是在说"这些我还没搞清"。生成 hosts 时只输出 <code>ad</code> + <code>source</code>（<code>ads.py:75-78</code>），<code>other</code> 不进清单。</p>
+<p><strong>顺带一提</strong>：<code>ads.py:99-125</code> 的 <code>extract_from_apk</code> 用 <code>zipfile</code> 逐条目解开再扫，因为 APK 是 zip 压缩包，压缩后的字节不可见——<code>strings</code> 对它无效。这是个容易踩的坑。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s4"><h2><span class="sec-no">4</span>三、巧思 → 基本事实映射</h2>
+<table><thead><tr><th>巧思</th><th>位置</th><th>服务的基本事实</th><th>对应层次</th></tr></thead><tbody><tr><td>1. AUTH 签名放 token 原文</td><td><code>adb.py:121-125</code></td><td>F1 黑盒协议</td><td>协议层</td></tr><tr><td>2. shell v2 小端长度</td><td><code>adb.py:447</code></td><td>F1 黑盒协议</td><td>协议层</td></tr><tr><td>3. stderr 单独收集</td><td><code>adb.py:451-455</code></td><td>F1 + 输出纯净性</td><td>协议层</td></tr><tr><td>4. 设备 quirk 下沉为通用契约</td><td><code>adb.py:392-404</code></td><td>F1 厂商对抗</td><td>协议层</td></tr><tr><td>5. 主协议/sync 严格分离</td><td><code>adb.py:219-224</code></td><td>F1 黑盒协议</td><td>协议层</td></tr><tr><td>6. 手写 DER 换零依赖</td><td><code>adb.py:151-184</code></td><td>F1 派生（零依赖承诺）</td><td>协议层</td></tr><tr><td>7. 包名白名单正则</td><td><code>packages.py:23</code></td><td>F1 + F3 不可信输入</td><td>领域层·包</td></tr><tr><td>8. 快照先于动手</td><td><code>packages.py:184-185</code></td><td><strong>F3 可回退</strong></td><td>领域层·包</td></tr><tr><td>9. 只恢复原本 enabled 的</td><td><code>packages.py:213</code></td><td><strong>F3 可回退</strong></td><td>领域层·包</td></tr><tr><td>10. 原子写快照</td><td><code>packages.py:141-143</code></td><td>F3 凭据完整性</td><td>领域层·包</td></tr><tr><td>11. 逐条下发不用分号</td><td><code>packages.py:187-190</code></td><td>F1 + F3 静默失败</td><td>领域层·包</td></tr><tr><td>12. 两条腿取并集</td><td><code>cli.py:222</code></td><td><strong>F2 服务端下发</strong></td><td>领域层·广告</td></tr><tr><td>13. 提取宽松/分类严格</td><td><code>ads.py:33-37, 89-96</code></td><td><strong>F2 事先不可穷举</strong></td><td>领域层·广告</td></tr></tbody></table>
+<p><strong>闭环校验</strong>：三条基本事实全部被至少 3 项巧思服务，没有哪条事实是"提了但没落地"的。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s5"><h2><span class="sec-no">5</span>四、代价与边界</h2>
+<p>第一性原理分析必须直面缺陷。本项目有三处代价是设计选择的直接结果：</p>
+<h3>代价 1 · <code>adswitch</code> 破坏了 F3 自己建立的闭环</h3>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">python</span></div><pre><code data-lang="python"># ads.py:217-228
+def set_ad_settings(dev: AdbDevice, values: dict[str, str]) -&gt; dict[str, str]:
+    """按 {ns.key: value} 写 settings，返回实际写入结果。"""
+    out: dict[str, str] = {}
+    for full, val in values.items():
+        ns, _, key = full.partition(".")
+        try:
+            res = dev.run(f"settings put {ns} {key} {val}").strip()
+            check = dev.run(f"settings get {ns} {key}").strip()
+            out[full] = check if check else res</code></pre></div>
+<p><strong>问题</strong>：写之前不读原值、不落盘。用户在 <code>adswitch --set</code> 里改了 4 个开关后，<strong>没有任何办法一键还原</strong>。</p>
+<p><strong>为什么这严重</strong>：README 写着"只做<strong>可逆</strong>操作"，项目级承诺是 F3。但 <code>adswitch</code> 是唯一破坏该承诺的命令。而 <code>ads.py</code> 里已经有现成的 <code>save_record</code> 模式可以照抄（<code>packages.py:122</code>）。</p>
+<p><strong>修复成本</strong>：低。读原值 → 复用 <code>save_record</code> 的原子写 → <code>restore</code> 时一并还原。大约 30 行。</p>
+<h3>代价 2 · 手写 DER 解析的测试覆盖为零</h3>
+<p><code>adb.py:153-184</code>（<code>_parse_pem_rsa</code>）在覆盖率报告中整段缺失。它只在"没有 cryptography"这条路径上被走到，而 CI 里<strong>没有安装 cryptography</strong>（<code>test.yml</code> 只 <code>pip install -e .</code>），所以这段代码在 CI 里从没被执行过。</p>
+<p><strong>为什么严重</strong>：这是唯一一段<strong>手写密码学</strong>的代码。格式解析错了会静默产生错误的签名 → 表现为"AUTH 无限循环"，用户看不出是哪里错。</p>
+<p><strong>修复成本</strong>：低。加一个用已知测试密钥 PEM 的解析单测即可。</p>
+<h3>代价 3 · <code>other</code> 分类是无声的盲区</h3>
+<p><code>classify()</code> 把无法归类的域名全部塞进 <code>other</code>，而 <code>other</code> <strong>不进 hosts 清单</strong>。这意味着：</p>
+<ul class="check"><li>用户看不到"还有多少域名没搞清楚"</li><li><code>scan</code> 的输出 <code>domains.json</code> 里 <code>other</code> 是一大坨未标注的域名</li><li>分类特征表 <code>AD_HINTS</code> / <code>SOURCE_HINTS</code> 是硬编码的 30 个字符串，覆盖不了的域名就沉默</li></ul>
+<p><strong>为什么这不是 bug 而是边界</strong>：作者在 <code>ads.py:32</code> 注释了"从 APK 里提域名：宽松一点，宁可多收"。但<strong>宽松的代价没有在用户可见的地方体现</strong>。</p>
+<p><strong>修复成本</strong>：低。<code>DomainReport.summary()</code>（<code>ads.py:80-86</code>）加一句"另有 N 个未分类域名未加入清单"即可。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s6"><h2><span class="sec-no">6</span>五、综合结论</h2>
+<p>这个项目的设计密度高于同规模工具的通常水平。<strong>13 项巧思中，有 9 项直接来自三条基本事实的推导，而不是"我觉得这样好"</strong>。最典型的是巧思 4（设备 quirk 下沉）——它体现的是架构判断力：把脏东西关在正确的层里。</p>
+<p>最需要修的是<strong>代价 1</strong>。不是因为它复杂，而是因为它是<strong>项目自己声明的核心承诺的唯一破口</strong>。<code>adswitch</code> 加原值快照，是这个项目投入产出比最高的一处改动（约 30 行）。</p>
+<p>其次是<strong>演化速度与验证沉淀的失衡</strong>（详见演化分析）：3 小时 13 分钟 5 次提交，其中 4 处协议偏差只在 1 台电视 1 个固件上验证过，且那些"抓包结论"目前只在文档里，没有固化成测试。<code>ruff check</code> 实测 49 条告警、CI 里没有 ruff——说明<strong>静态检查从未进入过这个项目的开发闭环</strong>。</p>
+<p><strong>一句话总结</strong>：这是一个<strong>架构判断力远高于工程沉淀速度</strong>的项目。骨架是对的，方向是对的，边界是清楚的；缺的是把"抓包结论"和"静态检查"这两件事从一次性调试变成常规流程。</p>
+      <footer style="margin-top:70px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>mitvclean · 第一性原理 · 设计巧思 · 生成于 analysis/mitvclean第一性原理与设计巧思分析.md</span>
+        <span><a href="mitvclean架构实现分析.html">架构实现分析</a> · <a href="mitvclean基础层与领域模型演化分析.html">演化分析</a> · <a href="mitvclean第一性原理与设计巧思分析.html">第一性原理与巧思</a> · <a href="mitvclean代码质量评估.html">代码质量评估</a> · <a href="mitvclean技术栈拆解.html">技术栈拆解</a></span>
+      </footer>
+    </div>
+  </main>
+</div>
+<script>
+
+/* ---------- 目录生成 + scrollspy ---------- */
+(function(){
+  var nav = document.getElementById('tocNav');
+  var sections = document.querySelectorAll('section[id]');
+  var html = '<div class="toc-label">目录</div>';
+  sections.forEach(function(s){
+    var no = s.querySelector('.sec-no');
+    var t = s.querySelector('h2');
+    if(!t) return;
+    var label = (no ? no.textContent + ' · ' : '') + t.textContent.replace(no ? no.textContent : '', '').trim();
+    html += '<a href="#' + s.id + '" data-target="' + s.id + '">' + label + '</a>';
+    s.querySelectorAll('h3').forEach(function(h3){
+      var id = s.id + '-' + h3.textContent.replace(/\s+/g,'').slice(0,8);
+      h3.id = id;
+      html += '<a class="l2" href="#' + id + '" data-target="' + id + '">' + h3.textContent + '</a>';
+    });
+  });
+  nav.innerHTML = html;
+  var links = nav.querySelectorAll('a');
+  var map = {};
+  links.forEach(function(a){ map[a.dataset.target] = a; });
+  var targets = [];
+  document.querySelectorAll('h2[id],h3[id],section[id]').forEach(function(el){ if(el.id) targets.push(el); });
+  window.addEventListener('scroll', function(){
+    var pos = window.scrollY + 90, current = null;
+    for(var i=0;i<targets.length;i++){
+      if(targets[i].offsetTop <= pos) current = targets[i];
+    }
+    links.forEach(function(a){ a.classList.remove('active'); });
+    if(current && map[current.id]) map[current.id].classList.add('active');
+  }, {passive:true});
+})();
+
+/* ---------- 巧思卡展开 ---------- */
+(function(){
+  document.querySelectorAll('.cv .cv-h').forEach(function(header){
+    header.addEventListener('click', function(){
+      header.parentElement.classList.toggle('open');
+    });
+  });
+})();
+
+/* ---------- 轻量代码高亮（Python / YAML） ---------- */
+(function(){
+  var KEYWORDS = new Set(("def class return import from if elif else for in not and or raise with try except lambda "+
+    "yield pass break continue global nonlocal del assert async await is None True False self super").split(' '));
+  var YAML_KEYS = new Set(("schema name version description objects relations functions actions properties type required "+
+    "from to ref runtime implementation model property_definitions object_types relation_types interaction_policies "+
+    "presentation_tools available_on context_input requires confirmation handler icon inputs effects summary params "+
+    "status details role code amount period date datetime string number boolean json money open mutable source "+
+    "id_field config database kind display_name type_policy mutability data_source instructions acyclic from_types "+
+    "to_types default message create_object update_object delete_object create_relation update_relation delete_relation").split(' '));
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function colorize(code, lang){
+    var out = '', i = 0, n = code.length;
+    var isYaml = lang === 'yaml';
+    while(i < n){
+      var c = code[i];
+      if(c === '#' && (i === 0 || code[i-1] === '\n')){
+        var j = code.indexOf('\n', i); if(j === -1) j = n;
+        out += '<span class="tok-c">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(c === '"' || c === "'"){
+        var q = c, j = i + 1;
+        while(j < n){ if(code[j] === q){ j++; break; } if(code[j] === '\\') j++; j++; }
+        out += '<span class="tok-s">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[0-9]/.test(c) || (c === '-' && /[0-9]/.test(code[i+1]||''))){
+        var j = i; while(j < n && /[0-9.\-]/.test(code[j])) j++;
+        out += '<span class="tok-n">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[A-Za-z_\u4e00-\u9fa5]/.test(c)){
+        var j = i; while(j < n && /[A-Za-z0-9_\u4e00-\u9fa5]/.test(code[j])) j++;
+        var word = code.slice(i, j);
+        var next = code[j] || '';
+        if(isYaml && next === ':' && YAML_KEYS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(!isYaml && KEYWORDS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(/^[A-Z]/.test(word)) out += '<span class="tok-f">' + esc(word) + '</span>';
+        else out += esc(word);
+        i = j; continue;
+      }
+      if(c === '(' || c === ')' || c === '[' || c === ']' || c === '{' || c === '}'){
+        out += '<span class="tok-p">' + c + '</span>'; i++; continue;
+      }
+      out += esc(c); i++;
+    }
+    return out;
+  }
+  document.querySelectorAll('pre code[data-lang]').forEach(function(el){
+    el.innerHTML = colorize(el.textContent, el.dataset.lang);
+  });
+})();
+
+</script>
+</body>
+</html>

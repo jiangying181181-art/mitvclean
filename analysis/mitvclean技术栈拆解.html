@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mitvclean · 技术栈</title>
+<style>
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --surface-subtle:#f7f8f7;
+  --ink:#17201c; --muted:#68736d; --line:#dfe4e1; --line-strong:#cbd3ce;
+  --green:#156b4a; --green-dark:#0e5238; --green-soft:#e7f2ec;
+  --red:#b83b35; --red-soft:#f8e9e7; --amber:#9a6418; --amber-soft:#f8eedc;
+  --blue:#356a91; --blue-soft:#e7eff5;
+  --code-bg:#0f1a16; --code-ink:#d9e6df;
+  --mono:ui-monospace,SFMono-Regular,"Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink); background:var(--bg);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;line-height:1.7;font-size:15px}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+/* ---------- 侧边 TOC ---------- */
+.toc{position:sticky;top:0;height:100vh;overflow-y:auto;background:#17231e;color:#edf4f0;padding:22px 16px;border-right:1px solid #25362e}
+.toc .brand{display:flex;align-items:center;gap:11px;padding:0 6px 22px}
+.toc .brand-mark{display:grid;place-items:center;width:38px;height:38px;background:#e7f2ec;color:var(--green-dark);font-weight:800;border-radius:8px;font-size:12px;letter-spacing:.5px}
+.toc .brand strong{display:block;font-size:14px}
+.toc .brand span{display:block;margin-top:2px;color:#97a89f;font-size:11px}
+.toc nav{display:grid;gap:2px}
+.toc a{display:block;padding:7px 10px;border-radius:6px;color:#aebdb5;font-size:13px;border-left:2px solid transparent;transition:.15s}
+.toc a:hover{color:#fff;background:rgba(255,255,255,.06);text-decoration:none}
+.toc a.active{color:#fff;background:#274337;border-left-color:#4fbf8d}
+.toc a.l2{padding-left:24px;font-size:12.5px;color:#8fa29a}
+.toc .toc-label{padding:14px 10px 6px;font-size:10.5px;letter-spacing:1.5px;color:#6f8379;text-transform:uppercase}
+main{min-width:0}
+/* ---------- Hero ---------- */
+.hero{background:linear-gradient(135deg,#0e5238 0%,#14573f 45%,#1d3b30 100%);color:#edf4f0;padding:56px 0 44px}
+.hero .wrap{max-width:940px;margin:0 auto;padding:0 32px}
+.hero .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:2px;color:#9dcdb6;text-transform:uppercase;font-weight:600}
+.hero .kicker::before{content:"";width:26px;height:2px;background:#4fbf8d}
+.hero h1{margin:14px 0 10px;font-size:32px;line-height:1.25}
+.hero p{margin:0;color:#b9c9c1;max-width:74ch;font-size:15px}
+.hero .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.hero .chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);padding:6px 12px;border-radius:999px;font-size:12px;color:#d8e5de}
+.hero .chip b{color:#fff;font-weight:600}
+.hero .conclusion{margin-top:24px;padding:16px 18px;border-radius:10px;background:rgba(255,255,255,.07);border-left:3px solid #4fbf8d;font-size:14px;color:#cfe0d7}
+/* ---------- 正文 ---------- */
+.content{max-width:940px;margin:0 auto;padding:48px 32px 90px}
+section{margin-top:52px}
+section:first-child{margin-top:0}
+h2{font-size:24px;margin:0 0 6px;display:flex;align-items:center;gap:12px}
+h2 .sec-no{font-size:13px;font-weight:700;color:#fff;background:var(--green);width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none}
+h3{font-size:17.5px;margin:34px 0 10px;color:#14352a}
+h4{font-size:15px;margin:22px 0 8px;color:#0e5238}
+p{margin:10px 0;color:#2c3731}
+.lead{border-left:3px solid var(--green);padding:10px 16px;background:var(--green-soft);border-radius:0 8px 8px 0;font-size:14.5px;color:#173b2d;margin:14px 0}
+/* ---------- 代码框 ---------- */
+.codebox{margin:16px 0;border-radius:10px;overflow:hidden;border:1px solid #1c2d25;background:var(--code-bg);box-shadow:0 6px 18px rgba(20,40,32,.12)}
+.codebox .bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#14221c;border-bottom:1px solid #22352c;color:#7f9a8e;font-size:11.5px}
+.codebox .bar .dot{width:9px;height:9px;border-radius:50%}
+.codebox .bar .dot:nth-child(1){background:#f0635c}.codebox .bar .dot:nth-child(2){background:#e2b25c}.codebox .bar .dot:nth-child(3){background:#5fc98a}
+.codebox .bar .fname{margin-left:6px;font-family:var(--mono);color:#9fb6ab}
+.codebox pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.65;color:var(--code-ink)}
+.codebox pre code{font-family:inherit;background:none;color:inherit;padding:0}
+.tok-c{color:#6d8a7e;font-style:italic}
+.tok-s{color:#e6c97a}
+.tok-k{color:#7fd6a8;font-weight:600}
+.tok-n{color:#86c5e8}
+.tok-f{color:#d9a7f0}
+.tok-p{color:#c88fd8}
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.06)}
+th{background:#eef3f0;color:#24402f;text-align:left;padding:10px 14px;font-size:12.5px;letter-spacing:.3px;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code,li code,p code{font-family:var(--mono);font-size:12px;background:#e9efec;border:1px solid #dbe2de;border-radius:5px;padding:1.5px 6px;color:#0e5238}
+/* ---------- 卡片 / Callout ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.card h4{margin:0 0 8px}
+.card p{margin:6px 0;font-size:13.5px}
+.card .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.callout{border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.info{background:var(--blue-soft);border-color:#c9dbe8;color:#234a66}
+.callout.warn{background:var(--amber-soft);border-color:#e8d9b8;color:#6d4712}
+.callout.ok{background:var(--green-soft);border-color:#c4e0d1;color:#14543a}
+.callout.red{background:var(--red-soft);border-color:#ecc9c6;color:#7c2b27}
+.callout .t{font-weight:700;display:block;margin-bottom:4px}
+/* ---------- 分层图 ---------- */
+.layers{display:grid;gap:0;margin:20px 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:var(--surface)}
+.layer{padding:16px 20px;border-top:1px solid var(--line)}
+.layer:first-child{border-top:none}
+.layer .lname{font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px}
+.layer .lname .badge{font-size:10.5px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:6px}
+.layer .ldesc{font-size:13px;color:var(--muted);margin-top:4px}
+.layer .lfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.layer .lfiles span{font-family:var(--mono);font-size:11.5px;background:#f0f3f1;border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:#33453c}
+.l-base{background:#e7f2ec}.l-domain{background:#fff}.l-agent{background:#e7eff5}
+.badge-base{background:#c4e0d1;color:#14543a}.badge-domain{background:#e8d9b8;color:#6d4712}.badge-agent{background:#c9dbe8;color:#234a66}
+/* ---------- 流程图 ---------- */
+.flow{display:grid;gap:10px;margin:18px 0}
+.flow .step{display:grid;grid-template-columns:46px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.flow .idx{width:46px;height:46px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:16px;color:#fff}
+.flow .step .st{font-weight:700;font-size:14px}
+.flow .step .sd{font-size:12.8px;color:var(--muted)}
+.flow .side{font-family:var(--mono);font-size:11px;color:#3f5249;background:#eef2ef;border-radius:7px;padding:4px 9px;white-space:nowrap}
+.flow .join{text-align:center;color:var(--green);font-weight:700;font-size:13px;letter-spacing:3px}
+/* ---------- 时间线 ---------- */
+.master-tl{position:relative;margin:24px 0;padding-left:34px}
+.master-tl::before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:3px;background:linear-gradient(#156b4a,#356a91)}
+.master-tl .mt{position:relative;margin:0 0 14px}
+.master-tl .mt .dot{position:absolute;left:-32px;top:8px;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--green)}
+.master-tl .mt .ph{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.master-tl .mt .ph .badge{font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:6px}
+.master-tl .mt .ph .date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.master-tl .mt .ph .commit{font-family:var(--mono);font-size:11.5px;color:#4a5c53;background:#eef2ef;border-radius:6px;padding:2px 8px}
+.master-tl .mt .ph .title{font-weight:700;font-size:15px}
+.master-tl .mt .desc{font-size:13px;color:#3a4a42;margin-top:3px}
+.b-a{background:#e7f2ec;color:#14543a}.b-b{background:#dcefe4;color:#14543a}.b-c{background:#f8eedc;color:#6d4712}
+.b-d{background:#f3e8c9;color:#6d4712}.b-e{background:#e7eff5;color:#234a66}.b-f{background:#e8d9b8;color:#6d4712}
+.b-g{background:#c9dbe8;color:#234a66}.b-h{background:#d9c9e8;color:#4a2a66}
+/* ---------- 巧思可折叠卡 ---------- */
+.clever{display:grid;gap:14px;margin:14px 0}
+.cv{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 10px rgba(28,41,34,.05)}
+.cv .cv-h{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:13px 18px;background:#fafbfa;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.cv .cv-n{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff}
+.cv .cv-t{font-weight:800;font-size:14.5px;line-height:1.4}
+.cv .cv-f{font-family:var(--mono);font-size:11px;color:var(--muted);background:#eef2ef;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.cv .cv-b{display:none;padding:6px 18px 16px}
+.cv.open .cv-b{display:block}
+.cv .cv-b p{font-size:13.6px;color:#33423b}
+.cv .cv-b .why{margin-top:10px;padding:10px 14px;border-radius:9px;background:var(--green-soft);border-left:3px solid var(--green);font-size:13px;color:#173b2d}
+.cv .toggle{color:var(--muted);font-size:18px;transition:.2s}
+.cv.open .toggle{transform:rotate(45deg)}
+/* ---------- 双栏 / 列表 / 响应式 ---------- */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.check li{margin:6px 0;list-style:none;padding-left:28px;position:relative}
+.check li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--green);font-weight:800}
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .toc{display:none}
+  .hero h1{font-size:25px}
+  .dual{grid-template-columns:1fr}
+  .cv .cv-h{grid-template-columns:40px 1fr}
+  .cv .cv-f{display:none}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc">
+    <div class="brand">
+      <div class="brand-mark">mitv</div>
+      <div><strong>技术栈</strong><span>mitvclean 深度解构</span></div>
+    </div>
+    <nav id="tocNav"></nav>
+  </aside>
+  <main>
+    <header class="hero">
+      <div class="wrap">
+        <div class="kicker">OpenSource-X · 技术栈</div>
+        <h1>mitvclean · 技术栈</h1>
+        <p>这套栈还健康吗，基于它做二开的成本在哪</p>
+        <div class="meta">
+          <span class="chip">分析对象 <b>mitvclean</b></span>
+          <span class="chip">版本 <b>b277c37</b></span>
+          <span class="chip">数据来源 <b>本地仓库直读</b></span>
+          <span class="chip">日期 <b>2026-10-21</b></span>
+        </div>
+        <div class="conclusion"><b>结论先行：</b>见正文第一节「结论」，每条结论均可回溯到具体文件路径与行号。</div>
+      </div>
+    </header>
+    <div class="content">
+<h3>mitvclean 技术栈拆解</h3>
+<ul class="check"><li><strong>分析对象</strong>：<code>mitvclean</code></li><li><strong>数据来源</strong>：本地仓库直读（<code>pyproject.toml</code> / <code>.github/workflows/test.yml</code> / <code>requirements</code> 清单 / 源码 import 分析）</li><li><strong>分析日期</strong>：2026-10-21</li><li><strong>分析版本</strong>：<code>b277c37</code></li><li><strong>分析角度</strong>：角度六 · 技术栈</li></ul>
+<section id="s1"><h2><span class="sec-no">1</span>结论</h2>
+<p>这是一套<strong>刻意极简</strong>的技术栈：<strong>Python 3.9+ 标准库，零第三方依赖</strong>。</p>
+<table><thead><tr><th>维度</th><th>结论</th></tr></thead><tbody><tr><td>语言构成</td><td>Python 100%（2 265 行），另有 829 行 Markdown / 配置 / 清单</td></tr><tr><td>运行时</td><td>CPython ≥ 3.9（CI 实测 3.9–3.13 × 3 OS 全绿）</td></tr><tr><td>框架与核心库</td><td><strong>0 个第三方库</strong>。stdlib 覆盖 socket / struct / json / zipfile / re / argparse / hashlib</td></tr><tr><td>数据与存储</td><td>无数据库。文件系统（<code>profiles/</code> 版本化 + <code>work/</code> 运行时）</td></tr><tr><td>基础设施</td><td>无。单机 CLI，无服务、无容器、无编排</td></tr><tr><td>构建与交付</td><td><code>pyproject.toml</code> + setuptools，<code>pip install -e .</code>，<code>mitvclean.bat</code> 双击即用</td></tr><tr><td>质量与工程化</td><td>unittest（自写 runner）+ 2 个 CI 矩阵 + fake adbd 集成测试；<strong>但无 lint / 无类型检查 / 无覆盖率门禁</strong></td></tr><tr><td>许可证</td><td>MIT（项目与唯一可选依赖 <code>cryptography</code> 均为 MIT/Apache-2.0 双许可兼容）</td></tr><tr><td>依赖健康度</td><td>间接依赖 <strong>0</strong>，漏洞面 <strong>0</strong></td></tr></tbody></table>
+<p><strong>零依赖是本项目最正确的一个技术决策</strong>，理由不只是"轻"：</p>
+<ol class="check"><li>用户是普通人，不会为去广告去配 Python 环境。<code>dependencies = []</code> 让 <code>pip install</code> 永不失败。</li><li>供应链攻击面归零。没有 <code>requirements.txt</code> 就没有 CVE 传导路径，这对一个要装在别人家用电器上的工具是决定性的。</li><li>交叉编译与打包（若将来做 GUI）不受第三方库的 Python 版本约束。</li></ol>
+<p><strong>代价</strong>：手写了 RSA DER 解析（<code>adb.py:151-184</code>，100 行，零测试覆盖）；没有 <code>httpx</code>/<code>requests</code> 级别的 HTTP 能力（不需要）；没有 <code>pydantic</code> 级别的数据校验（<code>profile.json</code> 因此静默容错，见质量评估 P1-8）。</p>
+<p><strong>唯一实质风险</strong>：<code>cryptography</code> 作为可选依赖，其最低版本 <code>&gt;=3.4</code> 是 <strong>2019 年</strong>的版本。<code>cryptography</code> 从 3.4 起才支持 Rust 后端，且 2024 年后官方推荐 ≥ 41.0。这个下限设得太松，会让用户装到含已知 CVE 的旧版本。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s2"><h2><span class="sec-no">2</span>一、七维度技术栈矩阵</h2>
+<table><thead><tr><th>维度</th><th>实测内容</th><th>评价</th></tr></thead><tbody><tr><td><strong>语言构成</strong></td><td>Python 2 265 行（<code>mitvclean/</code> 1 626 + <code>tests/</code> 525 + 其他）；Markdown / TOML / YAML / TXT / JSON / BAT 共 829 行</td><td>✅ 单一语言，无 FFI、无跨语言构建</td></tr><tr><td><strong>运行时与版本</strong></td><td><code>requires-python = "&gt;=3.9"</code>；CI 矩阵 3.9 / 3.10 / 3.11 / 3.12 / 3.13 × ubuntu / windows / macos = 15 组</td><td>✅✅ 优秀。最低 3.9 是刻意的（Windows 预装 Python 常年落后），且真在 15 个组合上跑</td></tr><tr><td><strong>框架与核心库</strong></td><td>无框架。核心依赖全在 stdlib：<code>socket</code>（传输）、<code>struct</code>（二进制协议）、<code>hashlib</code>/<code>base64</code>（认证）、<code>zipfile</code>（APK 扫描）、<code>re</code>（域名提取）、<code>argparse</code>（CLI）、<code>json</code>/<code>csv</code>（数据）、<code>subprocess</code>（仅 <code>list_devices</code>）</td><td>✅ 依赖风险为零。⚠️ 但 <code>subprocess</code> 唯一用处在 <code>list_devices()</code>（<code>adb.py:501</code>），是全项目唯一需要外部 adb 的功能</td></tr><tr><td><strong>数据与存储</strong></td><td>无数据库、无 ORM。版本化数据：<code>profiles/&lt;slug&gt;/{profile.json,debloat.txt,hosts.txt}</code>；运行时数据：<code>work/state-<em>.json</code>（原子写）、<code>work/hosts-</em>.txt</code>、<code>work/domains.json</code>、<code>work/logcat.txt</code></td><td>✅ 对单机 CLI 是正确选择。⚠️ <code>work/</code> 无清理机制，快照会无限堆积</td></tr><tr><td><strong>基础设施</strong></td><td>无。云无关、无容器、无 CI 服务依赖（只用了 GitHub Actions）、无网络出口（本工具只连电视的 5555 端口）</td><td>✅✅ 优秀。<strong>零外部网络依赖</strong>是这类工具的重要属性</td></tr><tr><td><strong>构建与交付</strong></td><td><code>pyproject.toml</code>（setuptools ≥ 61，PEP 621 元数据）；<code>pip install -e .</code> → <code>mitvclean</code> 命令；<code>mitvclean.bat</code>（Windows 双击，自动找 Python、自动装依赖、进入交互菜单）；未打包成 wheel/PyPI</td><td>✅ 交付路径极简。⚠️ 未发 PyPI 是对的（受众是电视用户不是 Python 用户），但也没有 exe 化路径</td></tr><tr><td><strong>质量与工程化</strong></td><td>自写 unittest runner（<code>tests/test_*.py</code> 各自 <code>_run_all()</code>，无 pytest 依赖）；CI 15 组矩阵 + CLI 冒烟；<code>FakeAdbd</code> 假设备做协议集成测试；<strong>无 ruff、无 mypy、无覆盖率门禁、无 pre-commit</strong></td><td>⚠️ 测试有骨架但<strong>门禁不全</strong>。CI 跑了测试但没跑 lint（实测 49 条 ruff 告警从未被卡住）</td></tr></tbody></table>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s3"><h2><span class="sec-no">3</span>二、依赖清单</h2>
+<h3>直接依赖</h3>
+<table><thead><tr><th>包</th><th>版本约束</th><th>用途</th><th>必需性</th></tr></thead><tbody><tr><td>（无）</td><td>—</td><td>—</td><td>—</td></tr><tr><td><code>cryptography</code></td><td><code>&gt;=3.4</code>（<strong>可选</strong>，extras <code>crypto</code>）</td><td>ADB 认证时加速 RSA 签名 / 生成密钥</td><td>可选。无它时走手写 DER 解析（<code>adb.py:139-143</code> 的 <code>except ImportError</code> 分支）</td></tr></tbody></table>
+<p><code>pyproject.toml</code> 原文：</p>
+<div class="codebox"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">toml</span></div><pre><code data-lang="text">dependencies = []
+
+[project.optional-dependencies]
+# 只有在 adb 认证需要自己签 RSA 密钥时才有必要装；有 cryptography 会快很多。
+crypto = ["cryptography&gt;=3.4"]</code></pre></div>
+<h3>间接依赖</h3>
+<table><thead><tr><th>场景</th><th>间接依赖数</th><th>判定</th></tr></thead><tbody><tr><td>默认安装（<code>pip install -e .</code>）</td><td><strong>0</strong></td><td>✅✅ 无依赖膨胀</td></tr><tr><td>安装 <code>crypto</code> extra</td><td><code>cryptography</code> → <code>cffi</code> → <code>pycparser</code> = <strong>3</strong></td><td>✅ 极小</td></tr></tbody></table>
+<p><strong>没有"依赖膨胀"问题</strong>。这是本项目技术栈最大的优点——对于要被普通用户装在自己家里电视上的工具，任何间接依赖都是潜在的故障点。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s4"><h2><span class="sec-no">4</span>三、依赖健康度与合规</h2>
+<h3>3.1 漏洞与过时清单</h3>
+<table><thead><tr><th>项</th><th>状态</th><th>说明</th></tr></thead><tbody><tr><td><strong>项目本身漏洞</strong></td><td><strong>0 个第三方依赖 → 0 个已知 CVE</strong></td><td>无依赖即无传导路径</td></tr><tr><td><strong><code>cryptography&gt;=3.4</code></strong></td><td>⚠️ <strong>版本下限过松</strong></td><td>3.4 发布于 2019-10。它是 <code>cryptography</code> 第一个支持 Rust 后端的版本（3.4 是过渡期，实际稳定在 42+）。2024 年后官方仅维护 42+ 分支。装到 3.4/3.9 这类旧版本会带来已修复的 OpenSSL 绑定层 CVE</td></tr><tr><td><strong>Python 3.9</strong></td><td>⚠️ <strong>EOL 在 2025-10</strong></td><td>Python 3.9 已于 2025 年 10 月结束官方支持。本项目 <code>requires-python = "&gt;=3.9"</code> 允许装到已 EOL 的解释器，且 CI 仍在测 3.9</td></tr><tr><td><strong>stdlib 用法</strong></td><td>✅ 无过时 API</td><td><code>socket</code> / <code>struct</code> / <code>zipfile</code> / <code>argparse</code> 均为稳定 API</td></tr></tbody></table>
+<p><strong>建议</strong>：</p>
+<ul class="check"><li><code>cryptography&gt;=3.4</code> → <code>cryptography&gt;=41.0</code>（2023-03，LTS 分支起点）</li><li><code>requires-python</code> 保持 <code>&gt;=3.9</code>（这是给终端用户装的，锁更高会挡住 Windows 预装的旧 Python），但<strong>在 README 里标注 3.9 已 EOL、推荐 3.11+</strong></li><li>CI 矩阵保留 3.9（验证兼容性），但可加一个"最低版本 3.9 不再是推荐版本"的说明</li></ul>
+<h3>3.2 许可证合规</h3>
+<table><thead><tr><th>对象</th><th>许可证</th><th>与 MIT 的兼容性</th></tr></thead><tbody><tr><td>本项目</td><td>MIT</td><td>—</td></tr><tr><td><code>cryptography</code></td><td>Apache-2.0 <strong>或</strong> BSD-3-Clause 双许可</td><td>✅ 完全兼容（Apache-2.0 与 MIT 兼容）</td></tr><tr><td><code>cffi</code></td><td>MIT</td><td>✅</td></tr><tr><td><code>pycparser</code></td><td>BSD-3-Clause</td><td>✅</td></tr><tr><td>Python stdlib</td><td>PSF License</td><td>✅ 不进入分发物</td></tr><tr><td><code>docs/ADB协议实现笔记.md</code> 引用 AOSP 协议文档</td><td>Apache-2.0</td><td>✅ 仅描述协议行为，未复制 AOSP 源码</td></tr></tbody></table>
+<p><strong>结论：许可证零风险。</strong> 唯一可选依赖是双许可且与 MIT 兼容。</p>
+<h3>3.3 协议合规</h3>
+<p>本项目实现了 ADB 协议，<strong>未复制 AOSP 任何源文件</strong>——<code>adb.py</code> 是从协议文档 + 抓包实测独立实现的。这一点在 <code>docs/ADB协议实现笔记.md</code> 里明确写了来源方法（中间人代理抓包），且所有结论标注了"文档说的"vs"实测的"。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s5"><h2><span class="sec-no">5</span>四、关键选型评价</h2>
+<h3>选型 1 · 自研 ADB 客户端而非调用 adb.exe</h3>
+<p><strong>是否当前最佳实践</strong>：<strong>在这个场景下是</strong>，在通用场景下不是。</p>
+<p><strong>生命周期</strong>：adb 协议自 Android 早期至今稳定（<code>CNXN</code>/<code>AUTH</code>/<code>OPEN</code>/<code>OKAY</code>/<code>WRTE</code>/<code>CLSE</code> 六命令二十年未变），自研实现的维护成本可控。</p>
+<p><strong>替换 / 迁移成本</strong>：</p>
+<ul class="check"><li>换成调用 <code>adb.exe</code>：成本极低（<code>adb.py</code> 的 <code>shell()</code> / <code>pull()</code> 换实现，<code>run()</code> 契约不变，上层零改动），但<strong>会失去"零依赖 + 免安装"这两条核心承诺</strong></li><li>换成 <code>adb-shell</code>（PyPI）：引入 1 个直接依赖 + 若干间接依赖，破坏零依赖承诺</li></ul>
+<p><strong>判断</strong>：这个场景（用户只有电视，没有 Android SDK，不会在电脑上装 platform-tools）下，自研是<strong>唯一合理选择</strong>。协议层 513 行、CC 最高 8、已被假 adbd 覆盖主要路径——投入产出比合理。</p>
+<h3>选型 2 · 零第三方依赖</h3>
+<p><strong>是否当前最佳实践</strong>：<strong>对受众是，对项目本身有代价</strong>。</p>
+<p><strong>生命周期</strong>：零依赖永远不过时。</p>
+<p><strong>替换成本</strong>：零依赖是单向门——一旦引入就很难收回。所以 <code>cryptography</code> 只能是可选 extra，不能进 <code>dependencies</code>。</p>
+<p><strong>判断</strong>：正确。代价是 100 行手写 DER 解析（应补测试，见质量评估 P0-3）。</p>
+<h3>选型 3 · 纯文件系统数据层 + 目录即注册表</h3>
+<p><strong>是否当前最佳实践</strong>：<strong>是</strong>。</p>
+<p><strong>生命周期</strong>：JSON / TXT 的可读性使它们在 10 年内不会过时。</p>
+<p><strong>替换成本</strong>：若要换 SQLite，只需重写 <code>profiles.py</code> 的 3 个函数（<code>list_profiles</code> / <code>load_profile</code> / <code>Profile.host_groups</code>）与 <code>packages.py</code> 的快照读写，<strong>上层零改动</strong>——因为边界划得清楚。</p>
+<p><strong>判断</strong>：对单机 CLI 是最优解，且迁移路径已经被架构保证。</p>
+<h3>选型 4 · 目录树作为注册表（无插件机制）</h3>
+<p><strong>是否当前最佳实践</strong>：<strong>是</strong>。</p>
+<p><code>profiles.py:97-104</code> 的 <code>list_profiles()</code> 遍历目录自动发现画像。对比需要实现 <code>importlib.metadata</code> entry_points 的插件机制，目录树简单到没有 bug 面。</p>
+<p><strong>代价</strong>：无法打包成单文件分发（wheel 里不带 <code>profiles/</code>，<code>pyproject.toml</code> 的 <code>[tool.setuptools] packages = ["mitvclean"]</code> 只包含 Python 包）。<strong>当前用 <code>pip install -e .</code>（editable）不暴露这个问题，但 <code>pip install mitvclean</code>（非 editable）会得到一个找不到画像的安装。</strong></p>
+<p>这是一个<strong>尚未暴露但已存在的发布缺陷</strong>，见下方 P1。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s6"><h2><span class="sec-no">6</span>五、二开成本评估</h2>
+<table><thead><tr><th>想做的事</th><th>难度</th><th>成本</th><th>说明</th></tr></thead><tbody><tr><td>加一个新机型的去臃肿清单</td><td>⭐ 极低</td><td>复制目录改 <code>debloat.txt</code></td><td>零代码，<code>CONTRIBUTING.md</code> 已写清</td></tr><tr><td>加一个新机型的广告域名</td><td>⭐ 极低</td><td>跑 <code>scan</code> → 整理 <code>hosts.txt</code></td><td>零代码</td></tr><tr><td>改 hosts 分组策略</td><td>⭐⭐ 低</td><td>改 <code>profiles.py</code> 的 <code>GROUP_RE</code> 或直接改 <code>hosts.txt</code> 的标记</td><td>已有 <code>host_groups()</code> 抽象</td></tr><tr><td>支持别的品牌电视</td><td>⭐⭐ 低</td><td>加 <code>profiles/&lt;slug&gt;/</code> + 必要时扩 <code>ads.py</code> 的 HINTS</td><td>分层清晰，主要工作在数据层</td></tr><tr><td>做一个 GUI</td><td>⭐⭐⭐ 中</td><td>需要引入 GUI 框架（<strong>破坏零依赖</strong>）或做本地 Web UI</td><td>建议做本地 Web UI + 保留 CLI core，这样零依赖仍成立</td></tr><tr><td>支持 <code>adb pair</code> / 无线调试（Android 11+）</td><td>⭐⭐⭐ 中</td><td>需要实现 <code>host:pair:&lt;code&gt;</code> 服务与 TLS 传输</td><td>协议层是独立文件，不污染其他层</td></tr><tr><td>加 <code>scan</code> 的定时任务</td><td>⭐⭐ 低</td><td>加一个 <code>mitvclean watch</code> 子命令 + <code>apscheduler</code>（或用系统 cron）</td><td><code>cli.py</code> 加子命令即可</td></tr><tr><td>打包成 Windows exe</td><td>⭐⭐ 低</td><td>PyInstaller</td><td>但 <code>profiles/</code> 是运行时数据，需要 <code>--add-data</code></td></tr><tr><td>把 ADB 客户端换成 <code>adb-shell</code></td><td>⭐ 极低</td><td>重写 <code>adb.py</code> 的 <code>shell</code>/<code>pull</code></td><td><code>run()</code> 契约保持即可，上层零改动</td></tr></tbody></table>
+<p><strong>总体判断：二开成本极低。</strong> 主要原因就是架构报告里说的那句——协议层是唯一不透明处，领域层与数据层都可独立替换。</p>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s7"><h2><span class="sec-no">7</span>六、按 P0 / P1 / P2 给技术栈升级建议</h2>
+<table><thead><tr><th>级别</th><th>事项</th><th>位置</th><th>说明</th></tr></thead><tbody><tr><td><strong>P0</strong></td><td><code>cryptography&gt;=3.4</code> → <code>&gt;=41.0</code></td><td><code>pyproject.toml</code></td><td>避免用户装到含已知 CVE 的旧版本。1 行改动</td></tr><tr><td><strong>P1</strong></td><td>修 wheel 打包缺失 <code>profiles/</code> 的问题</td><td><code>pyproject.toml</code></td><td><code>pip install mitvclean</code>（非 editable）会找不到画像。改用 <code>package-data</code> + <code>MANIFEST.in</code>，或直接把 <code>profiles/</code> 移进 <code>mitvclean/</code> 包内</td></tr><tr><td><strong>P1</strong></td><td>CI 接入 <code>ruff check</code></td><td><code>.github/workflows/test.yml</code></td><td>技术栈里唯一的"缺口"。49 条告警从未被卡住</td></tr><tr><td><strong>P1</strong></td><td>CI 接入覆盖率门禁（<code>coverage report --fail-under=60</code>）</td><td><code>.github/workflows/test.yml</code></td><td>当前覆盖率 34%（保守口径），无门禁则只会下降</td></tr><tr><td><strong>P2</strong></td><td>引入 <code>mypy</code> 或 <code>pyright</code> 做类型检查</td><td>CI</td><td>代码已有大量 <code>-&gt; str</code> / <code>dict[str, str]</code> 标注，基础很好，补类型检查成本低</td></tr><tr><td><strong>P2</strong></td><td>README 标注 Python 3.9 已 EOL，推荐 3.11+</td><td><code>README.md</code></td><td>用户机器上的 Python 版本由 OS 决定，主动引导比被动踩坑好</td></tr><tr><td><strong>P2</strong></td><td>增加 <code>mitvclean --version</code></td><td><code>mitvclean/__init__.py</code></td><td>版本号目前只在 <code>pyproject.toml</code>，需加 <code>__version__</code> 并在 CI 里校验与 <code>pyproject.toml</code> 一致</td></tr><tr><td><strong>P2</strong></td><td>考虑 <code>pre-commit</code> 钩子</td><td><code>.pre-commit-config.yaml</code></td><td>对单人项目收益有限，CI 门禁已足够</td></tr></tbody></table>
+<div class="callout info"><span class="t">—</span></div>
+<section id="s8"><h2><span class="sec-no">8</span>七、结论</h2>
+<p>技术栈是<strong>这个项目最没有问题的部分</strong>。</p>
+<p>零依赖、纯标准库、Python 3.9+、MIT/Apache-2.0 双许可清白、15 组 CI 矩阵全绿、无数据库无容器无云依赖——每一条都指向同一个判断：<strong>这个工具的价值在于它"装得上、用得起、不会连累用户"</strong>，而不是技术含量。</p>
+<p>两个必须处理的技术债：</p>
+<ol class="check"><li><strong><code>cryptography&gt;=3.4</code> 版本下限过松</strong>（P0）——这是整个技术栈里唯一的安全敞口</li><li><strong>wheel 打包不含 <code>profiles/</code></strong>（P1）——一个尚未暴露但已存在的发布缺陷，<code>pip install -e .</code> 掩盖了它</li></ol>
+<p>而技术栈<strong>缺的那一环</strong>，恰好是质量评估里 P1-4 说的那个：<strong>lint 与覆盖率从未进入 CI</strong>。测试跑得很勤（17+5 项，15 组矩阵），但没有任何静态检查关卡——所以 49 条 ruff 告警在 5 次提交里安然无恙地躺到现在。对一个把"零第三方依赖"当成核心承诺的项目 ironically 缺了一环<strong>工具链自检</strong>：项目信任用户的网络，却不信任自己的代码风格。</p>
+      <footer style="margin-top:70px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>mitvclean · 技术栈 · 生成于 analysis/mitvclean技术栈拆解.md</span>
+        <span><a href="mitvclean架构实现分析.html">架构实现分析</a> · <a href="mitvclean基础层与领域模型演化分析.html">演化分析</a> · <a href="mitvclean第一性原理与设计巧思分析.html">第一性原理与巧思</a> · <a href="mitvclean代码质量评估.html">代码质量评估</a> · <a href="mitvclean技术栈拆解.html">技术栈拆解</a></span>
+      </footer>
+    </div>
+  </main>
+</div>
+<script>
+
+/* ---------- 目录生成 + scrollspy ---------- */
+(function(){
+  var nav = document.getElementById('tocNav');
+  var sections = document.querySelectorAll('section[id]');
+  var html = '<div class="toc-label">目录</div>';
+  sections.forEach(function(s){
+    var no = s.querySelector('.sec-no');
+    var t = s.querySelector('h2');
+    if(!t) return;
+    var label = (no ? no.textContent + ' · ' : '') + t.textContent.replace(no ? no.textContent : '', '').trim();
+    html += '<a href="#' + s.id + '" data-target="' + s.id + '">' + label + '</a>';
+    s.querySelectorAll('h3').forEach(function(h3){
+      var id = s.id + '-' + h3.textContent.replace(/\s+/g,'').slice(0,8);
+      h3.id = id;
+      html += '<a class="l2" href="#' + id + '" data-target="' + id + '">' + h3.textContent + '</a>';
+    });
+  });
+  nav.innerHTML = html;
+  var links = nav.querySelectorAll('a');
+  var map = {};
+  links.forEach(function(a){ map[a.dataset.target] = a; });
+  var targets = [];
+  document.querySelectorAll('h2[id],h3[id],section[id]').forEach(function(el){ if(el.id) targets.push(el); });
+  window.addEventListener('scroll', function(){
+    var pos = window.scrollY + 90, current = null;
+    for(var i=0;i<targets.length;i++){
+      if(targets[i].offsetTop <= pos) current = targets[i];
+    }
+    links.forEach(function(a){ a.classList.remove('active'); });
+    if(current && map[current.id]) map[current.id].classList.add('active');
+  }, {passive:true});
+})();
+
+/* ---------- 巧思卡展开 ---------- */
+(function(){
+  document.querySelectorAll('.cv .cv-h').forEach(function(header){
+    header.addEventListener('click', function(){
+      header.parentElement.classList.toggle('open');
+    });
+  });
+})();
+
+/* ---------- 轻量代码高亮（Python / YAML） ---------- */
+(function(){
+  var KEYWORDS = new Set(("def class return import from if elif else for in not and or raise with try except lambda "+
+    "yield pass break continue global nonlocal del assert async await is None True False self super").split(' '));
+  var YAML_KEYS = new Set(("schema name version description objects relations functions actions properties type required "+
+    "from to ref runtime implementation model property_definitions object_types relation_types interaction_policies "+
+    "presentation_tools available_on context_input requires confirmation handler icon inputs effects summary params "+
+    "status details role code amount period date datetime string number boolean json money open mutable source "+
+    "id_field config database kind display_name type_policy mutability data_source instructions acyclic from_types "+
+    "to_types default message create_object update_object delete_object create_relation update_relation delete_relation").split(' '));
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function colorize(code, lang){
+    var out = '', i = 0, n = code.length;
+    var isYaml = lang === 'yaml';
+    while(i < n){
+      var c = code[i];
+      if(c === '#' && (i === 0 || code[i-1] === '\n')){
+        var j = code.indexOf('\n', i); if(j === -1) j = n;
+        out += '<span class="tok-c">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(c === '"' || c === "'"){
+        var q = c, j = i + 1;
+        while(j < n){ if(code[j] === q){ j++; break; } if(code[j] === '\\') j++; j++; }
+        out += '<span class="tok-s">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[0-9]/.test(c) || (c === '-' && /[0-9]/.test(code[i+1]||''))){
+        var j = i; while(j < n && /[0-9.\-]/.test(code[j])) j++;
+        out += '<span class="tok-n">' + esc(code.slice(i, j)) + '</span>'; i = j; continue;
+      }
+      if(/[A-Za-z_\u4e00-\u9fa5]/.test(c)){
+        var j = i; while(j < n && /[A-Za-z0-9_\u4e00-\u9fa5]/.test(code[j])) j++;
+        var word = code.slice(i, j);
+        var next = code[j] || '';
+        if(isYaml && next === ':' && YAML_KEYS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(!isYaml && KEYWORDS.has(word)) out += '<span class="tok-k">' + esc(word) + '</span>';
+        else if(/^[A-Z]/.test(word)) out += '<span class="tok-f">' + esc(word) + '</span>';
+        else out += esc(word);
+        i = j; continue;
+      }
+      if(c === '(' || c === ')' || c === '[' || c === ']' || c === '{' || c === '}'){
+        out += '<span class="tok-p">' + c + '</span>'; i++; continue;
+      }
+      out += esc(c); i++;
+    }
+    return out;
+  }
+  document.querySelectorAll('pre code[data-lang]').forEach(function(el){
+    el.innerHTML = colorize(el.textContent, el.dataset.lang);
+  });
+})();
+
+</script>
+</body>
+</html>
