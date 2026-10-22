@@ -198,23 +198,52 @@ def cmd_doctor(args) -> int:
     return 0
 
 
-# 抽查用的内容源主干域（不能全查，太慢；这几条覆盖 API / 鉴权 / UI / 少儿 / CDN）
-# 2026-10-22 实测：残留单条规则（milink.pandora.xiaomi.com）也会让该内容源不可用，
-# 所以多放几条不同用途的域做交叉抽查。
-REACHABILITY_PROBES = (
-    "api.ptmi.gitv.tv",          # 内容源 API 主干
-    "auth.api.gitv.tv",          # 鉴权（挂了这个 = 全站无授权）
-    "h5.v.mitvos.com",          # 播放页
-    "kid.xl.ptxl.gitv.tv",       # 少儿
-    "boxvideo.xl.ptxl.gitv.tv",  # 视频 CDN
-    "data.video.ptqy.gitv.tv",   # 片库
-    "milink.pandora.xiaomi.com", # 多屏互联
-    "ottimg.cdn.pandora.xiaomi.com",  # 图片 CDN
+# 抽查用的内容源主干域。
+#
+# 2026-10-22 实测教训：抽查会漏。路由器 hosts 里残留了 1 条
+# milink.pandora.xiaomi.com，8 条抽查里有 7 条正常，看起来像没问题，
+# 实际那 1 条仍被拦。所以改成**全量检查** —— 检查该画像所有内容源主干域，
+# 宁可多花十几秒，也不给"漏检"留空间。
+#
+# 全量检查的实现要点：不是发 30+ 次独立 ping（太慢、且小米 adbd
+# 同连接连开流会 CLSE），而是用**一条命令一次问多个域名**。
+REACHABILITY_BATCH = (
+    "api.ptmi.gitv.tv",           # 内容源 API 主干
+    "auth.api.gitv.tv",           # 鉴权（挂了这个 = 全站无授权）
+    "h5.v.mitvos.com",           # 播放页
+    "om.v.mitvos.com",
+    "kid.xl.ptxl.gitv.tv",        # 少儿
+    "boxvideo.xl.ptxl.gitv.tv",   # 视频 CDN
+    "data.video.ptqy.gitv.tv",    # 片库
+    "msg.ptqy.gitv.tv",
+    "flux.ptqy.gitv.tv",
+    "scs-hcdn.ptqy.gitv.tv",
+    "sdk-cache.video.ptqy.gitv.tv",
+    "milink.pandora.xiaomi.com",  # 多屏互联 ← 2026-10-22 残留的那条
+    "milink.pds.pandora.xiaomi.com",
+    "ottimg.cdn.pandora.xiaomi.com",
+    "image.cdn.pandora.xiaomi.com",
+    "package.cdn.pandora.xiaomi.com",
+    "media.icntv.pre.pandora.xiaomi.com",
+    "user.ptmi.pandora.xiaomi.com",
+    "user.t001.pandora.xiaomi.com",
+    "api.enttv.xiaomi.com",
+    "static.enttv.xiaomi.com",
+    "ccg.migc.xiaomi.com",
+    "bss.ptmi.gitv.tv",
+    "appstore-api.ptmi.gitv.tv",
+    "t1.a.market.xiaomi.com",
+    "t3.a.market.xiaomi.com",
+    "video.market.xiaomi.com",
+    "dbyyapi.bestv.com.cn",
+    "videodaily.ptmi.gitv.tv",
+    "cn.miguvideo.migutv",
+    "doh.ptqy.gitv.tv",
 )
 
 
 def _check_source_reachability(dev: AdbDevice) -> tuple[list[str], list[str], list[str]]:
-    """探测内容源域是否被 hosts 解析到 127.0.0.1。
+    """全量探测内容源域是否被 hosts 解析到 127.0.0.1。
 
     返回 (被拦截的域名, 正常的域名, 无响应的域名)。
     ⚠️ 这一项是 2026-10-22 加的：用户把内容源域一次性贴到路由器后，
@@ -222,29 +251,48 @@ def _check_source_reachability(dev: AdbDevice) -> tuple[list[str], list[str], li
 
     ⚠️ 必须区分三种情况，2026-10-22 实测踩过：
       · 解析到 127.0.0.1  → **被 hosts 拦截**（要修）
-      · unknown host      → 域名解析不出来（可能是 DNS 缓存/时序，也可能真不存在）
-      · 解析到正常 IP     → 正常
+      · 解析不出 / 无输出   → 域名解析不出来（可能是 DNS 缓存/时序）
+      · 解析到正常 IP      → 正常
     把后两种混为一谈会误报，让人白折腾。
+
+    ⚠️ **全量而不是抽查**。2026-10-22 抽查 8 条时漏掉了残留的
+    milink.pandora.xiaomi.com，7/8 正常看起来像没事，实际那条仍被拦。
+
+    ⚠️ **不能用多目标 ping**。实测 Android 的 `ping a b c` 只解析第一个目标，
+    后面两个被静默忽略 —— 会造成大面积误判"未解析"。
+    也不能靠输出里的域名反查：ping 显示的是 **CNAME**
+    （api.ptmi.gitv.tv → medial7.pandora.xiaomi.com），不是原域名。
+    所以只能逐个 ping，并按**输出顺序**与输入顺序对应。
     """
     blocked: list[str] = []
     ok: list[str] = []
     unknown: list[str] = []
-    for d in REACHABILITY_PROBES:
+
+    for d in REACHABILITY_BATCH:
         try:
             out = dev.run(f"ping -c 1 -W 2 {d}", read_timeout=15)
         except Exception:
             unknown.append(d)
             continue
-        first = out.strip().splitlines()[0] if out.strip() else ""
-        low = out.lower()
-        if "(127.0.0.1)" in first:
+        first = ""
+        for line in out.splitlines():
+            s = line.strip()
+            if s.startswith("PING "):
+                first = s
+                break
+        if not first:
+            unknown.append(d)
+            continue
+        # PING <cname-or-host> (<ip>) 56(84) bytes of data.
+        parts = first.split()
+        if len(parts) < 3:
+            unknown.append(d)
+            continue
+        ip = parts[2].strip("()")
+        if ip == "127.0.0.1":
             blocked.append(d)
-        elif "unknown host" in low or "bad address" in low:
-            unknown.append(d)
-        elif first and "(" in first:
-            ok.append(d)
         else:
-            unknown.append(d)
+            ok.append(d)
     return blocked, ok, unknown
 
 
