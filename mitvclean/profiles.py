@@ -26,6 +26,54 @@ PROFILES_DIR = Path(__file__).resolve().parent.parent / "profiles"
 #   # ===== 第 1 组：小米广告配置与交易平台（安全，优先）=====
 GROUP_RE = re.compile(r"^#\s*=+\s*(?:第\s*)?(\d+)\s*组[：:]\s*(.*?)\s*=+\s*$")
 
+# ⚠️ 危险域名：这些是**内容源的主干接口**，一旦被 hosts 拦到 127.0.0.1，
+# 电视上所有点播内容（电影/电视剧/少儿/综艺）会整体打不开，
+# 表现是"无法连接到服务器"，而不是某一个 App 打不开。
+#
+# 2026-10-22 实测教训：用户把第 2 组 31 条内容源域一次性贴到路由器，
+# 结果全站内容源解析到 127.0.0.1，电视所有节目都看不了。
+#
+# 这些域**不应该**被当作"广告域"直接拦截。它们的正确用途是：
+# 只在确认"某个具体内容源要断"时，单独、精确地加其中一条。
+CRITICAL_SOURCE_DOMAINS = frozenset({
+    # 内容源 API 主干
+    "api.ptmi.gitv.tv",
+    "bss.ptmi.gitv.tv",
+    "auth.api.gitv.tv",
+    "appstore-api.ptmi.gitv.tv",
+    "flux.ptqy.gitv.tv",
+    "data.video.ptqy.gitv.tv",
+    "msg.ptqy.gitv.tv",
+    "api.enttv.xiaomi.com",
+    "static.enttv.xiaomi.com",
+    "ccg.migc.xiaomi.com",
+    # 电视 UI / 播放页
+    "h5.v.mitvos.com",
+    "om.v.mitvos.com",
+    # 视频与图片 CDN（内容本体）
+    "boxvideo.xl.ptxl.gitv.tv",
+    "scs-hcdn.ptqy.gitv.tv",
+    "sdk-cache.video.ptqy.gitv.tv",
+    "ottimg.cdn.pandora.xiaomi.com",
+    "image.cdn.pandora.xiaomi.com",
+    "package.cdn.pandora.xiaomi.com",
+    "media.icntv.pre.pandora.xiaomi.com",
+    "user.ptmi.pandora.xiaomi.com",
+    "user.t001.pandora.xiaomi.com",
+    "milink.pandora.xiaomi.com",
+    "milink.pds.pandora.xiaomi.com",
+    # 商店
+    "t1.a.market.xiaomi.com",
+    "t3.a.market.xiaomi.com",
+    "video.market.xiaomi.com",
+    "dbyyapi.bestv.com.cn",
+    "videodaily.ptmi.gitv.tv",
+    "cn.miguvideo.migutv",
+    "doh.ptqy.gitv.tv",
+    # 少儿
+    "kid.xl.ptxl.gitv.tv",
+})
+
 
 class ProfileError(RuntimeError):
     pass
@@ -56,6 +104,16 @@ class Profile:
     @property
     def notes(self) -> list[str]:
         return self.meta.get("notes", [])
+
+    @property
+    def content_source_packages(self) -> list[str]:
+        """内容源引擎包名 —— 这些包禁了会导致影视点播没有内容。
+
+        2026-10-22 实测：org.courville.nova / com.duokan.videodaily /
+        com.sohuott.tv.vod.xiaomi 被禁用后，电视上所有点播内容都打不开。
+        无论它们是否出现在 debloat.txt 里，debloat 流程都会跳过它们。
+        """
+        return list(self.meta.get("content_source_packages", []))
 
     @property
     def verified(self) -> bool:
@@ -98,6 +156,15 @@ class Profile:
         if cur:
             groups.append((cur_title, cur))
         return groups
+
+    def critical_domains(self) -> list[str]:
+        """本画像里属于"内容源主干"的域名（拦了会导致全站内容看不了）。"""
+        out: list[str] = []
+        for _, domains in self.host_groups():
+            for d in domains:
+                if d in CRITICAL_SOURCE_DOMAINS and d not in out:
+                    out.append(d)
+        return out
 
 
 def _load_meta(path: Path) -> dict:

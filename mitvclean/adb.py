@@ -149,38 +149,86 @@ def _rsa_sign_pure(data: bytes) -> bytes:
 
 
 def _parse_pem_rsa(text: str):
-    """从 PEM 文本解析 RSA 的 n/d/e。"""
+    """从 PEM 文本解析 RSA 的 n/d/e。
+
+    支持两种格式：
+
+    · **PKCS#1**（``-----BEGIN RSA PRIVATE KEY-----``）
+      SEQUENCE { version, n, e, d, p, q, ... }
+    · **PKCS#8**（``-----BEGIN PRIVATE KEY-----``）—— 官方 adb 生成的就是这个
+      SEQUENCE { version, AlgorithmIdentifier, OCTET STRING(内含 PKCS#1 私钥) }
+
+    ⚠️ 只按 PKCS#1 解析会在 PKCS#8 密钥上报"期望 INTEGER"——
+    因为 PKCS#8 第二个字段是 SEQUENCE 而不是 INTEGER。
+    这条路径在 CI 里从不执行（CI 不装 cryptography），实测才会暴露。
+    """
     body: list[str] = []
     inside = False
     for line in text.splitlines():
+        line = line.strip()
         if line.startswith("-----BEGIN"):
             inside = True
             continue
         if line.startswith("-----END"):
             break
-        if inside:
-            body.append(line.strip())
+        if inside and line:
+            body.append(line)
     der = base64.b64decode("".join(body))
+
+    def read_len(buf: bytes, pos: int) -> tuple[int, int]:
+        """读 DER 长度，返回 (长度, 新位置)。"""
+        ln = buf[pos]
+        pos += 1
+        if ln & 0x80:
+            nbytes = ln & 0x7F
+            val = int.from_bytes(buf[pos:pos + nbytes], "big")
+            return val, pos + nbytes
+        return ln, pos
 
     def read_int(buf: bytes, pos: int) -> tuple[int, int]:
         if buf[pos] != 0x02:
             raise ValueError("期望 INTEGER")
         pos += 1
-        ln = buf[pos]
-        pos += 1
-        if ln & 0x80:
-            nbytes = ln & 0x7F
-            pos += 1
-        else:
-            nbytes = ln
+        nbytes, pos = read_len(buf, pos)
         return int.from_bytes(buf[pos:pos + nbytes], "big"), pos + nbytes
+
+    def read_seq(buf: bytes, pos: int) -> tuple[bytes, int]:
+        """读一个 SEQUENCE，返回 (内容, 新位置)。"""
+        if buf[pos] != 0x30:
+            raise ValueError("期望 SEQUENCE")
+        pos += 1
+        nbytes, pos = read_len(buf, pos)
+        return buf[pos:pos + nbytes], pos + nbytes
 
     if der[0] != 0x30:
         raise ValueError("期望 SEQUENCE")
-    pos = 2 + (der[1] & 0x7F) if der[1] & 0x80 else 2
-    n, pos = read_int(der, pos)
-    e, pos = read_int(der, pos)
-    d, _ = read_int(der, pos)
+    _, pos = read_len(der, 1)
+
+    # PKCS#8：先读 version(INTEGER)，再读 AlgorithmIdentifier(SEQUENCE)，
+    # 再读 OCTET STRING 里包着的 PKCS#1 私钥
+    first_tag = der[pos]
+    if first_tag == 0x02:
+        _, pos = read_int(der, pos)          # version
+        algo, pos = read_seq(der, pos)       # AlgorithmIdentifier
+        if der[pos] != 0x04:
+            raise ValueError("PKCS#8 期望 OCTET STRING")
+        pos += 1
+        nbytes, pos = read_len(der, pos)
+        inner = der[pos:pos + nbytes]        # 这才是 PKCS#1 RSAPrivateKey
+        pos = 2
+        if inner[0] != 0x30:
+            raise ValueError("期望内层 SEQUENCE")
+        _, pos = read_len(inner, 1)
+        buf = inner
+    else:
+        # PKCS#1：version, n, e, d, ...
+        buf = der
+        pos = 2 + (der[1] & 0x7F) if der[1] & 0x80 else 2
+
+    _, pos = read_int(buf, pos)   # version
+    n, pos = read_int(buf, pos)
+    e, pos = read_int(buf, pos)
+    d, _ = read_int(buf, pos)
     return n, d, e
 
 

@@ -173,9 +173,58 @@ def cmd_doctor(args) -> int:
             except Exception:
                 pass
 
-        print("\n[4] 可用的画像")
+        print("\n[4] 内容源连通性（hosts 拦截自检）")
+        blocked, ok_domains = _check_source_reachability(dev)
+        if blocked:
+            print(f"    ❌ {len(blocked)} 个内容源域被解析到 127.0.0.1 —— 已被 hosts 拦截")
+            for d in blocked:
+                print(f"        {d}")
+            print()
+            print("    这些是内容源的主干接口。全拦会导致电视上**所有节目**都显示")
+            print("    「无法连接到服务器」（不只是某一个 App）。")
+            print()
+            print("    修复：打开路由器的「自定义 Hosts」，删掉上面列出的这些行，保存。")
+            print("    入口：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts")
+        else:
+            print(f"    ✓ 抽查的 {len(ok_domains)} 个内容源域解析正常")
+
+        print("\n[5] 可用的画像")
         print(profile_table())
     return 0
+
+
+# 抽查用的内容源主干域（不能全查，太慢；这几条覆盖 API / UI / 少儿 / CDN）
+REACHABILITY_PROBES = (
+    "api.ptmi.gitv.tv",
+    "auth.api.gitv.tv",
+    "h5.v.mitvos.com",
+    "kid.xl.ptxl.gitv.tv",
+    "boxvideo.xl.ptxl.gitv.tv",
+    "data.video.ptqy.gitv.tv",
+    "ottimg.cdn.pandora.xiaomi.com",
+)
+
+
+def _check_source_reachability(dev: AdbDevice) -> tuple[list[str], list[str]]:
+    """探测内容源域是否被 hosts 解析到 127.0.0.1。
+
+    返回 (被拦截的域名, 正常的域名)。
+    ⚠️ 这一项是 2026-10-22 加的：用户把内容源域一次性贴到路由器后，
+    电视上所有节目都看不了，但当时没有任何工具能一眼看出原因。
+    """
+    blocked: list[str] = []
+    ok: list[str] = []
+    for d in REACHABILITY_PROBES:
+        try:
+            out = dev.run(f"ping -c 1 -W 2 {d}", read_timeout=15)
+        except Exception:
+            continue
+        first = out.strip().splitlines()[0] if out.strip() else ""
+        if "(127.0.0.1)" in first:
+            blocked.append(d)
+        elif first:
+            ok.append(d)
+    return blocked, ok
 
 
 def cmd_scan(args) -> int:
@@ -260,6 +309,10 @@ def cmd_hosts(args) -> int:
     默认按“组”分文件输出：第 1 组是纯广告域（拦了没副作用），第 2 组是
     内容源域（拦了对应 App 会打不开）。用 --group N 只出某一组，
     用 --group all 出一份全量。
+
+    ⚠️ **内容源主干域默认被剔除**。这些域一旦全部拦掉，电视上
+    所有点播内容（电影/剧集/少儿/综艺）会整体显示"无法连接到服务器"——
+    2026-10-22 在用户实机上实测确认过。要保留它们必须显式加 --include-critical。
     """
     out = Path(args.out or DEFAULT_OUT)
     out.mkdir(parents=True, exist_ok=True)
@@ -275,17 +328,29 @@ def cmd_hosts(args) -> int:
         return 1
 
     want = getattr(args, "group", None) or "all"
+    include_critical = getattr(args, "include_critical", False)
+    critical = set(p.critical_domains())
 
-    def write(name: str, title: str, domains: list[str]) -> Path:
+    def write(name: str, title: str, domains: list[str], dropped: list[str]) -> Path:
         lines = [
             f"# mitvclean 生成 · 画像 {slug} · {title}",
             f"# {p.summary()}",
             "# 格式：IP地址 域名（IP 在前，小米路由器要求）",
             "# 用法：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts",
             "#",
-            "# ⚠️ 内容源域名拦掉后该内容源会打不开 —— 哪条不行删哪条即可",
-            "",
         ]
+        if dropped:
+            lines += [
+                "# ⚠️ 已剔除 N 条「内容源主干域」——这些域全拦会导致电视上所有节目",
+                "#    都显示「无法连接到服务器」（2026-10-22 实测）。",
+                "#    如需保留，加 --include-critical 重新生成。",
+                "#",
+            ]
+        else:
+            lines += [
+                "# ⚠️ 内容源域名拦掉后该内容源会打不开 —— 哪条不行删哪条即可",
+                "#",
+            ]
         lines += [f"127.0.0.1 {d}" for d in domains]
         f = out / name
         f.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
@@ -293,8 +358,10 @@ def cmd_hosts(args) -> int:
 
     if want == "all":
         all_domains = [d for _, ds in groups for d in ds]
-        f = write(f"hosts-{slug}.txt", "全部", all_domains)
-        print(f"已生成 {f}（{len(all_domains)} 条规则）")
+        dropped = [d for d in all_domains if d in critical] if not include_critical else []
+        kept = [d for d in all_domains if d not in critical] if not include_critical else all_domains
+        f = write(f"hosts-{slug}.txt", "全部", kept, dropped)
+        print(f"已生成 {f}（{len(kept)} 条规则）")
     else:
         try:
             idx = int(want)
@@ -305,13 +372,24 @@ def cmd_hosts(args) -> int:
             print(f"画像 {slug} 只有 {len(groups)} 组，没有第 {idx} 组")
             return 2
         title, domains = groups[idx - 1]
-        f = write(f"hosts-{slug}-group{idx}.txt", f"第 {idx} 组 · {title}", domains)
-        print(f"已生成 {f}（{len(domains)} 条规则）")
+        dropped = [d for d in domains if d in critical] if not include_critical else []
+        kept = [d for d in domains if d not in critical] if not include_critical else domains
+        f = write(f"hosts-{slug}-group{idx}.txt", f"第 {idx} 组 · {title}", kept, dropped)
+        print(f"已生成 {f}（{len(kept)} 条规则）")
+
+    if dropped:
+        print()
+        print(f"⚠️ 已剔除 {len(dropped)} 条内容源主干域（全拦会导致所有节目看不了）：")
+        for d in dropped:
+            print(f"    {d}")
+        print("  如需保留：加 --include-critical")
 
     print()
     print("可用分组（分批生效，副作用从小到大）：")
     for i, (title, ds) in enumerate(groups, 1):
-        print(f"  第 {i} 组（{len(ds):>2} 条）{title}")
+        n_crit = sum(1 for d in ds if d in critical)
+        mark = f"（含 {n_crit} 条内容源主干域）" if n_crit else ""
+        print(f"  第 {i} 组（{len(ds):>2} 条）{title}{mark}")
     print()
     print("粘贴位置：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts")
     return 0
@@ -324,6 +402,18 @@ def cmd_debloat(args) -> int:
             slug = _profile_for(args, dev)
         p = load_profile(slug)
         names = packages.read_list(p.debloat_path)
+
+        # 内容源引擎保护：2026-10-22 实测这几个包禁了会导致影视点播没内容
+        protected = set(p.content_source_packages)
+        if protected:
+            hit = [n for n in names if n in protected]
+            if hit:
+                names = [n for n in names if n not in protected]
+                print("🚫 已跳过内容源引擎包（禁了会导致所有点播内容看不了）：")
+                for n in hit:
+                    print(f"    {n}")
+                print()
+
         print(f"画像 {slug}：{p.title}")
         print(f"清单 {len(names)} 个包")
         if args.dry_run:
@@ -454,6 +544,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("hosts", help="按画像生成 hosts 清单", parents=[common])
     s.add_argument("--group", default="all",
                    help="只生成某一组（1/2/3…），或 all 生成全量（默认 all）")
+    s.add_argument("--include-critical", action="store_true",
+                   help="保留内容源主干域（默认剔除：全拦会导致电视上所有节目都看不了）")
     s.set_defaults(func=cmd_hosts)
 
     s = sub.add_parser("adswitch", help="读/写广告开关", parents=[common])

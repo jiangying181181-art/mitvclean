@@ -15,6 +15,13 @@
     "属性 persist.bootvideo.bootanim 在本机不存在；service.bootvideo 是只读的，setprop 会失败",
     "国行固件的网络 ADB（5555）每次重启后自动关闭，需要在 设置 -> 账号与安全 -> ADB 调试 重新打开",
     "sdcard 上的 app 目录 shell 可读可写（/sdcard/Android/data/com.mitv.tvhome/cache/），广告缓存可以从这里清",
-    "app 私有目录（/data/data/com.mitv.tvhome/shared_prefs）shell 读不到，APK 里的广告开关（AD_SWITCH_CONFIG 等）改不了"
+    "app 私有目录（/data/data/com.mitv.tvhome/shared_prefs）shell 读不到，APK 里的广告开关（AD_SWITCH_CONFIG 等）改不了",
+    "🚨 2026-10-22 实测：内容源主干域（api.ptmi.gitv.tv / auth.api.gitv.tv / h5.v.mitvos.com 等 31 条）一旦被 hosts 拦到 127.0.0.1，电视上**所有节目**都显示「无法连接到服务器」。实测报错：java.net.ConnectException: Failed to connect to auth.api.gitv.tv/127.0.0.1:443 → gitv auth response = null（鉴权失败导致全站无授权）。绝对不要整组拦截",
+    "🚨 2026-10-22 实测：org.courville.nova / com.duokan.videodaily / com.sohuott.tv.vod.xiaomi 是内容源引擎，禁用后影视点播无内容。已从默认禁用清单移出"
+  ],
+  "content_source_packages": [
+    "org.courville.nova",
+    "com.duokan.videodaily",
+    "com.sohuott.tv.vod.xiaomi"
   ]
 }

@@ -298,6 +298,100 @@ def test_hosts_group_output_is_ip_first():
         assert len(rules) == len(g[0][1])
 
 
+def test_critical_source_domains_are_never_emitted_by_default():
+    """🚨 内容源主干域绝不能出现在默认生成的 hosts 里。
+
+    2026-10-22 实测事故：内容源域被整组贴到路由器后，电视上所有节目
+    都显示「无法连接到服务器」。这条测试就是那个事故的护栏。
+    """
+    import tempfile
+    from pathlib import Path
+    from mitvclean.cli import main
+    from mitvclean.profiles import CRITICAL_SOURCE_DOMAINS, load_profile
+
+    crit = load_profile("mitv-ansp0").critical_domains()
+    assert crit, "至少要能识别出内容源主干域"
+
+    with tempfile.TemporaryDirectory() as td:
+        # 默认（全量）——必须剔除
+        assert main(["hosts", "--profile", "mitv-ansp0", "--group", "all", "--out", td]) == 0
+        for f in Path(td).glob("*.txt"):
+            body = f.read_text(encoding="utf-8")
+            rules = [l.split()[1] for l in body.splitlines()
+                     if l.strip() and not l.startswith("#")]
+            leaked = [r for r in rules if r in CRITICAL_SOURCE_DOMAINS]
+            assert not leaked, f"{f.name} 漏出了内容源主干域：{leaked}"
+
+        # 第 2 组 ——也必须剔除
+        assert main(["hosts", "--profile", "mitv-ansp0", "--group", "2", "--out", td]) == 0
+        f2 = Path(td) / "hosts-mitv-ansp0-group2.txt"
+        body = f2.read_text(encoding="utf-8")
+        rules = [l.split()[1] for l in body.splitlines()
+                 if l.strip() and not l.startswith("#")]
+        assert not [r for r in rules if r in CRITICAL_SOURCE_DOMAINS]
+
+        # 显式加 --include-critical 才允许出现
+        assert main(["hosts", "--profile", "mitv-ansp0", "--group", "2",
+                     "--include-critical", "--out", td]) == 0
+        body = f2.read_text(encoding="utf-8")
+        rules = [l.split()[1] for l in body.splitlines()
+                 if l.strip() and not l.startswith("#")]
+        assert [r for r in rules if r in CRITICAL_SOURCE_DOMAINS], \
+            "--include-critical 时应保留内容源主干域"
+
+
+def test_parse_pem_rsa_handles_pkcs8():
+    """🚨 adbkey 官方生成的是 PKCS#8，只按 PKCS#1 解析会报"期望 INTEGER"。
+
+    2026-10-22 实测：自研 ADB 客户端连不上真机，根因就是这个。
+    这条测试用现场真实的 adbkey 格式做样本。
+    """
+    from mitvclean.adb import _parse_pem_rsa
+
+    # PKCS#8 样本：官方 adb 生成的 adbkey 结构（2048 位 RSA，e=65537）
+    pkcs8 = (
+        "-----BEGIN PRIVATE KEY-----\n"
+        "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDemsRHGjrtiA5J\n"
+        "-----END PRIVATE KEY-----\n"
+    )
+    # 结构不完整可以报错，但不能报"期望 INTEGER"以外的类型混淆错误
+    try:
+        _parse_pem_rsa(pkcs8)
+    except ValueError as e:
+        assert "期望 INTEGER" not in str(e), f"PKCS#8 被当成 PKCS#1 解析了：{e}"
+    except Exception:
+        pass
+
+    # 用一个自己生成的最小 PKCS#8 密钥做完整往返验证
+    import base64
+    import struct
+
+    def der_len(n: int) -> bytes:
+        if n < 0x80:
+            return bytes([n])
+        b = n.to_bytes((n.bit_length() + 7) // 8, "big")
+        return bytes([0x80 | len(b)]) + b
+
+    def der_int(v: int) -> bytes:
+        b = v.to_bytes((v.bit_length() + 7) // 8 or 1, "big")
+        return b"\x02" + der_len(len(b)) + b
+
+    # 造一个 PKCS#1 私钥结构（只保留 version/n/e/d 供解析）
+    n_v, e_v, d_v = 0xC0FFEE, 65537, 0xDEAD
+    pkcs1_body = der_int(0) + der_int(n_v) + der_int(e_v) + der_int(d_v)
+    pkcs1 = b"\x30" + der_len(len(pkcs1_body)) + pkcs1_body
+    # PKCS#8: version, AlgorithmIdentifier(SEQUENCE), OCTET STRING(pkcs1)
+    alg = b"\x30\x00"
+    pkcs8_body = der_int(0) + alg + b"\x04" + der_len(len(pkcs1)) + pkcs1
+    pkcs8_der = b"\x30" + der_len(len(pkcs8_body)) + pkcs8_body
+    pem = ("-----BEGIN PRIVATE KEY-----\n"
+           + base64.b64encode(pkcs8_der).decode()
+           + "\n-----END PRIVATE KEY-----\n")
+
+    n, d, e = _parse_pem_rsa(pem)
+    assert n == n_v and d == d_v and e == e_v, (n, d, e)
+
+
 # ---------------------------------------------------------------- 运行
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

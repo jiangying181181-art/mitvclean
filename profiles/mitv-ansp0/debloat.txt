@@ -8,6 +8,12 @@
 #   · com.xiaomi.mitv.settings / mitv.service / com.xiaomi.mitv.tvplayer 不能禁
 #   · com.droidlogic.*（Amlogic 平台输入/图像/字幕服务）不能禁
 #   · 投屏全家桶（smartshare / miplay / wfdsinkhelperservice / mi_connect_service / upnp）建议保留
+#   · 🚨 2026-10-22 实测：org.courville.nova / com.duokan.videodaily /
+#     com.sohuott.tv.vod.xiaomi 是**内容源引擎**，禁了影视点播就没内容。
+#     已从默认禁用清单移出到下面的保留区。
+#   · 🚨 2026-10-22 实测：内容源主干域（api.ptmi.gitv.tv 等 31 条）被 hosts
+#     拦到 127.0.0.1 后，**所有节目**都显示「无法连接到服务器」。
+#     hosts.txt 的第 2 组绝对不要整组使用。
 #
 # ===== 默认禁用 =====
 com.miui.tv.analytics
@@ -18,7 +24,6 @@ com.xiaomi.mitv.tvpush.tvpushservice
 com.android.smspush
 com.xm.webcontent
 com.mitv.shoplugin
-com.duokan.videodaily
 com.xiaomi.mitv.tvmanager
 com.xiaomi.mitv.handbook
 com.xiaomi.mitv.smartpanel
@@ -36,8 +41,6 @@ com.xiaomi.mitv.legal.webview
 com.cmgame.gamehalltv
 cn.egame.terminal.cloudtv
 com.xiaomi.eetv.litehome
-com.sohuott.tv.vod.xiaomi
-org.courville.nova
 
 # ===== 默认保留（按使用者需求决定，移到上面即可禁用）=====
 # com.mitv.kidai    # 少儿频道 —— 孩子看动画片要用
@@ -45,6 +48,9 @@ org.courville.nova
 # com.ihuman.pinyin.ott.vip    # 伴鱼拼音 —— 儿童教育内容
 # com.lutongnet.nldmxXiaomiChildren    # 儿童内容 —— 孩子看动画片要用
 # com.duokan.airkan.tvbox    # 爱看投屏 —— 投屏功能的一部分
+# org.courville.nova    # 🚨 内容源引擎 —— 禁了影视点播没内容（2026-10-22 实测）
+# com.duokan.videodaily    # 🚨 内容源引擎 —— 禁了影视点播没内容（2026-10-22 实测）
+# com.sohuott.tv.vod.xiaomi    # 🚨 内容源引擎 —— 禁了影视点播没内容（2026-10-22 实测）
 
 # ===== 本机确认不需要，可选禁用 =====
 # com.xiaomi.voicecontrol    # 小爱语音 —— 用户明确表示不需要
