@@ -174,7 +174,7 @@ def cmd_doctor(args) -> int:
                 pass
 
         print("\n[4] 内容源连通性（hosts 拦截自检）")
-        blocked, ok_domains = _check_source_reachability(dev)
+        blocked, ok_domains, unknown = _check_source_reachability(dev)
         if blocked:
             print(f"    ❌ {len(blocked)} 个内容源域被解析到 127.0.0.1 —— 已被 hosts 拦截")
             for d in blocked:
@@ -185,46 +185,67 @@ def cmd_doctor(args) -> int:
             print()
             print("    修复：打开路由器的「自定义 Hosts」，删掉上面列出的这些行，保存。")
             print("    入口：米家 App -> 路由器 -> 工具箱 -> 自定义 Hosts")
+            print("    ⚠️ 记得**全选删除**旧内容再粘贴，只删这几行可能还残留旧的规则。")
         else:
             print(f"    ✓ 抽查的 {len(ok_domains)} 个内容源域解析正常")
+        if unknown:
+            print(f"    ⚠️ {len(unknown)} 个域无响应（DNS 缓存或域名本身不可解析，非拦截）：")
+            for d in unknown:
+                print(f"        {d}")
 
         print("\n[5] 可用的画像")
         print(profile_table())
     return 0
 
 
-# 抽查用的内容源主干域（不能全查，太慢；这几条覆盖 API / UI / 少儿 / CDN）
+# 抽查用的内容源主干域（不能全查，太慢；这几条覆盖 API / 鉴权 / UI / 少儿 / CDN）
+# 2026-10-22 实测：残留单条规则（milink.pandora.xiaomi.com）也会让该内容源不可用，
+# 所以多放几条不同用途的域做交叉抽查。
 REACHABILITY_PROBES = (
-    "api.ptmi.gitv.tv",
-    "auth.api.gitv.tv",
-    "h5.v.mitvos.com",
-    "kid.xl.ptxl.gitv.tv",
-    "boxvideo.xl.ptxl.gitv.tv",
-    "data.video.ptqy.gitv.tv",
-    "ottimg.cdn.pandora.xiaomi.com",
+    "api.ptmi.gitv.tv",          # 内容源 API 主干
+    "auth.api.gitv.tv",          # 鉴权（挂了这个 = 全站无授权）
+    "h5.v.mitvos.com",          # 播放页
+    "kid.xl.ptxl.gitv.tv",       # 少儿
+    "boxvideo.xl.ptxl.gitv.tv",  # 视频 CDN
+    "data.video.ptqy.gitv.tv",   # 片库
+    "milink.pandora.xiaomi.com", # 多屏互联
+    "ottimg.cdn.pandora.xiaomi.com",  # 图片 CDN
 )
 
 
-def _check_source_reachability(dev: AdbDevice) -> tuple[list[str], list[str]]:
+def _check_source_reachability(dev: AdbDevice) -> tuple[list[str], list[str], list[str]]:
     """探测内容源域是否被 hosts 解析到 127.0.0.1。
 
-    返回 (被拦截的域名, 正常的域名)。
+    返回 (被拦截的域名, 正常的域名, 无响应的域名)。
     ⚠️ 这一项是 2026-10-22 加的：用户把内容源域一次性贴到路由器后，
     电视上所有节目都看不了，但当时没有任何工具能一眼看出原因。
+
+    ⚠️ 必须区分三种情况，2026-10-22 实测踩过：
+      · 解析到 127.0.0.1  → **被 hosts 拦截**（要修）
+      · unknown host      → 域名解析不出来（可能是 DNS 缓存/时序，也可能真不存在）
+      · 解析到正常 IP     → 正常
+    把后两种混为一谈会误报，让人白折腾。
     """
     blocked: list[str] = []
     ok: list[str] = []
+    unknown: list[str] = []
     for d in REACHABILITY_PROBES:
         try:
             out = dev.run(f"ping -c 1 -W 2 {d}", read_timeout=15)
         except Exception:
+            unknown.append(d)
             continue
         first = out.strip().splitlines()[0] if out.strip() else ""
+        low = out.lower()
         if "(127.0.0.1)" in first:
             blocked.append(d)
-        elif first:
+        elif "unknown host" in low or "bad address" in low:
+            unknown.append(d)
+        elif first and "(" in first:
             ok.append(d)
-    return blocked, ok
+        else:
+            unknown.append(d)
+    return blocked, ok, unknown
 
 
 def cmd_scan(args) -> int:
